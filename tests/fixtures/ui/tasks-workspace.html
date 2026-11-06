@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>SYNTHETIC FIXTURE — Projects workspace</title>
+<link rel="stylesheet" href="../../../assets/css/wpcable-workspace.css" />
+<link rel="stylesheet" href="_shell.css" />
+<style>
+table.widefat{width:100%;border-collapse:collapse;background:#fff}
+table.widefat th,table.widefat td{border-bottom:1px solid #dcdcde;padding:8px;text-align:left;font-size:13px}
+.button{display:inline-block;padding:4px 10px;border:1px solid #2271b1;background:#f6f7f7;border-radius:3px;font-size:13px}
+.button-primary{background:#2271b1;color:#fff}
+</style>
+</head>
+<body>
+<div class="wp-layout">
+  <nav class="wp-sidebar">
+    <h1>Codeable Stats</h1>
+    <a href="stats-empty.html">Stats</a>
+    <a href="clients-workspace.html">Clients</a>
+    <a class="is-current" href="tasks-workspace.html">Tasks</a>
+    <a href="opportunities.html">Opportunities</a>
+    <a href="#">Estimate</a>
+    <a href="#">Settings</a>
+  </nav>
+  <main class="wp-main">
+    <div class="banner"><strong>SYNTHETIC FIXTURE</strong> — names and counts are offline test data, not live Codeable clients.</div>
+    <div class="wrap wpcable_wrap wpcable-workspace wpcable-workspace--tasks">
+      <h1>Projects workspace</h1>
+      <p class="wpcable-lede">Imported Codeable projects, paginated on the server. Profile totals from users/me are a different scope than these local rows. Codeable access stays read-only; only your local notes and flags are saved here.</p>
+      <div class="wpcable-kpi-row">
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Profile completed</span><span class="wpcable-kpi__value">911</span><span class="wpcable-kpi__meta">users/me completed_tasks_count — not the local table</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Imported rows</span><span class="wpcable-kpi__value">30</span><span class="wpcable-kpi__meta">Local codeable_tasks rows (all filters)</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Published</span><span class="wpcable-kpi__value">27</span><span class="wpcable-kpi__meta">Local state = published</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Completed flag</span><span class="wpcable-kpi__value">2</span><span class="wpcable-kpi__meta">Local flag = completed</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Lost (local)</span><span class="wpcable-kpi__value">1</span><span class="wpcable-kpi__meta">Heuristic — not proof nobody else was hired</span></div>
+        <div class="wpcable-kpi wpcable-kpi--unavailable"><span class="wpcable-kpi__label">Transactions</span><span class="wpcable-kpi__value">Missing</span><span class="wpcable-kpi__meta">Unavailable — not $0 revenue</span></div>
+      </div>
+      <div class="wpcable-toolbar">
+        <div class="wpcable-filters">
+          <span class="button button-primary">All</span>
+          <span class="button">Published</span>
+          <span class="button">Completed</span>
+          <span class="button">Paid</span>
+          <span class="button">Estimated</span>
+          <span class="button">Lost</span>
+          <span class="button">Preferred</span>
+          <span class="button">Has notes</span>
+        </div>
+      </div>
+      <div class="wpcable-workspace-layout wpcable-drawer-open">
+        <div class="wpcable-table-card">
+          <table class="widefat striped wpcable-tasks-table">
+            <thead><tr><th>Client</th><th>Last activity</th><th>Project</th><th>Value</th><th>Title</th><th>Status / flags</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr class="wpcable-group-row"><td colspan="7">Fixture Client Alpha · client_id 101</td></tr>
+              <tr><td>Fixture Client Alpha</td><td>200d ago</td><td>#1</td><td>$1500</td><td>Alpha site rebuild</td><td>completed / completed ★</td><td><div class="wpcable-notes-preview">Has notes</div></td></tr>
+              <tr><td>Fixture Client Alpha</td><td>200d ago</td><td>#2</td><td>$800</td><td>Alpha maintenance</td><td>completed / completed ★</td><td><div class="wpcable-notes-preview is-empty">No local notes</div></td></tr>
+              <tr><td>Fixture Client Alpha</td><td>today</td><td>#3</td><td>—</td><td>Alpha new idea</td><td>published</td><td><div class="wpcable-notes-preview is-empty">No local notes</div></td></tr>
+              <tr class="wpcable-group-row"><td colspan="7">Fixture Client Beta · client_id 202</td></tr>
+              <tr><td>Fixture Client Beta</td><td>today</td><td>#4</td><td>—</td><td>Beta landing page</td><td>published</td><td><div class="wpcable-notes-preview is-empty">No local notes</div></td></tr>
+              <tr><td>Fixture Client Beta</td><td>200d ago</td><td>#5</td><td>—</td><td>Beta lost pitch</td><td>lost / lost</td><td><div class="wpcable-notes-preview is-empty">No local notes</div></td></tr>
+            </tbody>
+          </table>
+          <div class="wpcable-pagination"><span>Showing 1–25 of 30</span><div><span class="button">Next</span></div></div>
+        </div>
+        <aside class="wpcable-drawer">
+          <div class="wpcable-drawer__inner">
+            <h2>#1 · Alpha site rebuild</h2>
+            <p>Fixture Client Alpha · client_id 101</p>
+            <p><strong>Status:</strong> completed / task / flag completed · preferred</p>
+            <p><strong>Value:</strong> $1500 <span class="wpcable-source-chip">from task prices, not transactions</span></p>
+            <p class="description">These notes stay in WordPress. They are never sent to Codeable.</p>
+            <h3>Suggested next step</h3>
+            <ul><li><strong>Completed-project follow-up</strong> <span class="wpcable-badge">MEDIUM</span><br /><span class="description">Local completed flag on 2 project(s); last recorded activity is 200 days ago. Not a confirmed client need.</span></li></ul>
+            <div class="wpcable-unsupported"><h3>Not available from current API map</h3><ul><li><strong>Workroom chat</strong> — not imported</li><li><strong>Client website</strong> — not imported</li></ul></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

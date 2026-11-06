@@ -112,6 +112,9 @@
 				<?php esc_html_e( 'Log into your Codeable account.', 'wpcable' ); ?><br />
 				<?php esc_html_e( 'During login this plugin obtains a user-specific auth-token which is used to fetch data from the API later. Your password is not saved anywhere!', 'wpcable' ); ?>
 			</p>
+			<p class="description">
+				<?php esc_html_e( 'This plugin is read-only against Codeable: it does not send messages, estimates, or payouts, and it does not write to workrooms. Local notes and color flags stay in WordPress.', 'wpcable' ); ?>
+			</p>
 
 			<table class="form-table">
 				<tbody>

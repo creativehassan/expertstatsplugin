@@ -72,12 +72,26 @@ class wpcable_api_calls {
 		$url              = 'users/login';
 		$login_call       = $this->request( $url, $args );
 
+		if ( ! is_array( $login_call ) ) {
+			$redirect_to = codeable_add_message_param( 'error', 'credentials' );
+
+			wp_safe_redirect( $redirect_to );
+			exit;
+		}
+
 		// Credential error checking.
 		if (
 			isset( $login_call['errors'] ) &&
 			! empty( $login_call['errors'][0]['message'] ) &&
 			'Invalid credentials' === $login_call['errors'][0]['message']
 		) {
+			$redirect_to = codeable_add_message_param( 'error', 'credentials' );
+
+			wp_safe_redirect( $redirect_to );
+			exit;
+		}
+
+		if ( empty( $login_call['auth_token'] ) ) {
 			$redirect_to = codeable_add_message_param( 'error', 'credentials' );
 
 			wp_safe_redirect( $redirect_to );
@@ -142,6 +156,10 @@ class wpcable_api_calls {
 	public function self() {
 		$url        = 'users/me';
 		$login_call = $this->request( $url, [], 'get' );
+
+		if ( ! is_array( $login_call ) ) {
+			return false;
+		}
 
 		unset( $login_call['auth_token'] );
 
@@ -241,12 +259,14 @@ class wpcable_api_calls {
 		}
 
 		$response_body = json_decode( $response['body'], true );
-		
-		if( isset( $response['headers'] ) ) {
-			
+
+		if ( ! is_array( $response_body ) ) {
+			return false;
+		}
+
+		if ( isset( $response['headers'] ) && is_object( $response['headers'] ) && method_exists( $response['headers'], 'getAll' ) ) {
 			$full_header = $response['headers']->getAll();
-			if ( isset( $full_header['auth-token'] ) && !empty( $full_header['auth-token'] ) ) {
-				
+			if ( isset( $full_header['auth-token'] ) && ! empty( $full_header['auth-token'] ) ) {
 				$response_body['auth_token'] = $full_header['auth-token'];
 			}
 		}

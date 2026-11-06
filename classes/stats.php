@@ -25,7 +25,34 @@ class wpcable_stats {
 
 	}
 
+	/**
+	 * Whether any money-transaction rows exist locally.
+	 *
+	 * @return bool
+	 */
+	public function has_transaction_data() {
+		global $wpdb;
+
+		$count = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . $this->tables['transcactions'] );
+		return $count > 0;
+	}
+
+	/**
+	 * Count of local money-transaction rows.
+	 *
+	 * @return int
+	 */
+	public function get_transaction_count() {
+		global $wpdb;
+
+		return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . $this->tables['transcactions'] );
+	}
+
 	public function get_dates_totals( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) {
+
+		if ( ! $this->has_valid_range( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) ) {
+			return $this->empty_totals();
+		}
 
 		$first_date = date( 'Y-m-d H:i:s', strtotime( $from_year . '-' . $from_month . '-' . $from_day ) );
 		$last_date  = date( 'Y-m-d H:i:s', strtotime( $to_year . '-' . $to_month . '-' . $to_day . ' 23:59:59' ) );
@@ -52,11 +79,51 @@ class wpcable_stats {
 
 		$single_result = array_shift( $result );
 
-		return $single_result;
+		return $single_result ? $single_result : $this->empty_totals();
 
 	}
 
+	/**
+	 * Empty totals used when transactions are missing. Callers must not treat this as $0 earned.
+	 *
+	 * @return array
+	 */
+	public function empty_totals() {
+		return array(
+			'fee_amount'     => null,
+			'contractor_fee' => null,
+			'revenue'        => null,
+			'total_cost'     => null,
+			'tasks'          => 0,
+			'available'      => false,
+		);
+	}
+
+	/**
+	 * Reject missing / epoch date parts so charts never default to 1970.
+	 *
+	 * @return bool
+	 */
+	public function has_valid_range( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) {
+		$parts = array( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year );
+		foreach ( $parts as $part ) {
+			if ( '' === $part || null === $part || false === $part ) {
+				return false;
+			}
+		}
+		$from_year = (int) $from_year;
+		$to_year   = (int) $to_year;
+		if ( $from_year < 2008 || $to_year < 2008 ) {
+			return false;
+		}
+		return true;
+	}
+
 	public function get_days( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) {
+
+		if ( ! $this->has_valid_range( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) ) {
+			return array();
+		}
 
 		$first_date = date( 'Y-m-d H:i:s', strtotime( $from_year . '-' . $from_month . '-' . $from_day ) );
 		$last_date  = date( 'Y-m-d H:i:s', strtotime( $to_year . '-' . $to_month . '-' . $to_day . ' 23:59:59' ) );
@@ -108,6 +175,10 @@ class wpcable_stats {
 
 	public function get_dates_average( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) {
 
+		if ( ! $this->has_valid_range( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) ) {
+			return $this->empty_totals();
+		}
+
 		$first_date = date( 'Y-m-d H:i:s', strtotime( $from_year . '-' . $from_month . '-' . $from_day ) );
 		$last_date  = date( 'Y-m-d H:i:s', strtotime( $to_year . '-' . $to_month . '-' . $to_day . ' 23:59:59' ) );
 
@@ -132,17 +203,30 @@ class wpcable_stats {
 
 		$single_result = array_shift( $result );
 
-		return $single_result;
+		return $single_result ? $single_result : $this->empty_totals();
 
 	}
 
 	public function get_months_average( $from_month, $from_year, $to_month, $to_year ) {
+
+		if ( (int) $from_year && (int) $from_year < 2008 ) {
+			return $this->empty_totals();
+		}
+		if ( (int) $to_year && (int) $to_year < 2008 ) {
+			return $this->empty_totals();
+		}
 
 		$get_month_range_totals = $this->get_month_range_totals( $from_month, $from_year, $to_month, $to_year );
 
 		$fee_amount = $contractor_fee = $revenue = $total_cost = $tasks = array();
 
 		foreach ( $get_month_range_totals as $month ) {
+			if ( isset( $month['available'] ) && false === $month['available'] ) {
+				continue;
+			}
+			if ( null === $month['fee_amount'] && null === $month['revenue'] ) {
+				continue;
+			}
 
 			$fee_amount[]     = $month['fee_amount'];
 			$contractor_fee[] = $month['contractor_fee'];
@@ -152,11 +236,16 @@ class wpcable_stats {
 
 		}
 
+		if ( empty( $fee_amount ) ) {
+			return $this->empty_totals();
+		}
+
 		$averages = array(
 			'fee_amount'     => round( ( array_sum( $fee_amount ) / count( $fee_amount ) ), 2 ),
 			'contractor_fee' => round( ( array_sum( $contractor_fee ) / count( $contractor_fee ) ), 2 ),
 			'revenue'        => round( ( array_sum( $revenue ) / count( $revenue ) ), 2 ),
 			'total_cost'     => round( ( array_sum( $total_cost ) / count( $total_cost ) ), 2 ),
+			'available'      => true,
 		);
 
 		return $averages;
@@ -176,19 +265,29 @@ class wpcable_stats {
 
 		$totals = array();
 
+		if ( ( $from_year !== '' && (int) $from_year < 2008 ) || ( $to_year !== '' && (int) $to_year < 2008 ) ) {
+			return $totals;
+		}
+
 		$firstdate = '';
 		$lastdate  = '';
 
 		// get first and last task if no date is set
 		if ( $from_month == '' && $from_year == '' ) {
 			$get_first_task = $this->get_first_task();
-			$firstdate      = $get_first_task['dateadded'];
+			if ( empty( $get_first_task['dateadded'] ) || ! wpcable_is_valid_datetime( $get_first_task['dateadded'] ) ) {
+				return $totals;
+			}
+			$firstdate = $get_first_task['dateadded'];
 		} else {
 			$firstdate = $from_year . '-' . $from_month . '-01';
 		}
 		if ( $to_month == '' && $to_year == '' ) {
 			$get_last_task = $this->get_last_task();
-			$lastdate      = $get_last_task['dateadded'];
+			if ( empty( $get_last_task['dateadded'] ) || ! wpcable_is_valid_datetime( $get_last_task['dateadded'] ) ) {
+				return $totals;
+			}
+			$lastdate = $get_last_task['dateadded'];
 		} else {
 			$lastdate = $to_year . '-' . $to_month . '-' . date( 't', strtotime( $to_year . '-' . $to_month . '-01 23:59:59' ) );
 		}
@@ -229,7 +328,8 @@ class wpcable_stats {
 		$cache_key = 'first_task';
 		$result    = $this->check_cache( $cache_key, $query );
 
-		return array_shift( $result );
+		$row = is_array( $result ) ? array_shift( $result ) : null;
+		return $row ? $row : array();
 	}
 
 	public function get_last_task() {
@@ -251,7 +351,8 @@ class wpcable_stats {
 		$cache_key = 'last_task';
 		$result    = $this->check_cache( $cache_key, $query );
 
-		return array_shift( $result );
+		$row = is_array( $result ) ? array_shift( $result ) : null;
+		return $row ? $row : array();
 	}
 
 	public function get_year_totals( $year ) {
@@ -262,6 +363,10 @@ class wpcable_stats {
 
 
 	public function get_amounts_range( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) {
+
+		if ( ! $this->has_valid_range( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) ) {
+			return array();
+		}
 
 		$first_date = date( 'Y-m-d H:i:s', strtotime( $from_year . '-' . $from_month . '-' . $from_day ) );
 		$last_date  = date( 'Y-m-d H:i:s', strtotime( $to_year . '-' . $to_month . '-' . $to_day . ' 23:59:59' ) );
@@ -311,6 +416,10 @@ class wpcable_stats {
 
 	public function get_tasks_per_month( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) {
 
+		if ( ! $this->has_valid_range( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) ) {
+			return array();
+		}
+
 		$first_date = date( 'Y-m-d H:i:s', strtotime( $from_year . '-' . $from_month . '-' . $from_day ) );
 		$last_date  = date( 'Y-m-d H:i:s', strtotime( $to_year . '-' . $to_month . '-' . $to_day . ' 23:59:59' ) );
 
@@ -337,6 +446,10 @@ class wpcable_stats {
 	}
 
 	public function get_tasks_type( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) {
+
+		if ( ! $this->has_valid_range( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) ) {
+			return array();
+		}
 
 		$first_date = date( 'Y-m-d H:i:s', strtotime( $from_year . '-' . $from_month . '-' . $from_day ) );
 		$last_date  = date( 'Y-m-d H:i:s', strtotime( $to_year . '-' . $to_month . '-' . $to_day . ' 23:59:59' ) );
@@ -379,6 +492,14 @@ class wpcable_stats {
 	}
 
 	public function get_preferred_count( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) {
+
+		if ( ! $this->has_valid_range( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) ) {
+			return array(
+				'preferred'    => 0,
+				'nonpreferred' => 0,
+				'available'    => false,
+			);
+		}
 
 		$first_date = date( 'Y-m-d H:i:s', strtotime( $from_year . '-' . $from_month . '-' . $from_day ) );
 		$last_date  = date( 'Y-m-d H:i:s', strtotime( $to_year . '-' . $to_month . '-' . $to_day . ' 23:59:59' ) );
@@ -428,6 +549,37 @@ class wpcable_stats {
 	public function get_all_stats( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year, $chart_display_method = 'months' ) {
 
 		$stats = array();
+
+		if ( ! $this->has_transaction_data() || ! $this->has_valid_range( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year ) ) {
+			$stats['available']            = false;
+			$stats['averages']             = $this->empty_totals();
+			$stats['preferred_count']      = array(
+				'preferred'    => 0,
+				'nonpreferred' => 0,
+			);
+			$stats['chart_amounts_range']  = array();
+			$stats['get_available_ranges'] = array();
+			$stats['type_categories']      = array();
+			$stats['type_contractor_fee']  = array();
+			$stats['type_revenue']         = array();
+			$stats['type_tasks_count']     = array();
+			$stats['type_tasks_count_json'] = '{}';
+			$stats['max_month_totals']     = array();
+			$stats['max_month_totals_key'] = array( '' );
+			$stats['all_month_totals']     = array();
+			$stats['chart_categories']     = array();
+			$stats['chart_dates']          = array();
+			$stats['chart_dates_json']     = '[]';
+			$stats['chart_contractor_fee'] = array();
+			$stats['chart_revenue']        = array();
+			$stats['chart_revenue_avg']    = array();
+			$stats['chart_total_cost']     = array();
+			$stats['chart_tasks_count']    = array();
+			$stats['chart_tasks_count_avg'] = array();
+			$stats['chart_tasks_count_json'] = '{}';
+			$stats['chart_revenue_json']   = '{}';
+			return $stats;
+		}
 
 		$averages          = $this->get_months_average( $from_month, $from_year, $to_month, $to_year );
 		$preferred_count   = $this->get_preferred_count( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year );
@@ -580,6 +732,7 @@ class wpcable_stats {
 		$stats['chart_tasks_count_avg']  = $chart_tasks_count_avg;
 		$stats['chart_tasks_count_json'] = $chart_tasks_count_json;
 		$stats['chart_revenue_json']     = $chart_revenue_json;
+		$stats['available']              = true;
 
 		return $stats;
 	}

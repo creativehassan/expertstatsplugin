@@ -1,5 +1,14 @@
 ### Changelog
 
+*0.4.0 (2026-11-06)*
+* Hybrid workspace inside this plugin: server-side Tasks pagination/search/filters/client grouping + Clients page + evidence-backed Opportunities
+* Preserve existing slugs (`codeable_transcactions_stats`, `codeable_tasks`, `codeable_estimate`, `codeable_settings`); Estimate math and Settings options unchanged
+* PHP 8 profile/avatar guards and invalid API JSON guards (from the repaired 0.3.1 baseline)
+* Honest financial empty state when transactions are missing — no fake $0 or year 1970
+* Per-source import health (profile / tasks / transactions) without inventing success times
+* Local notes remain editable; Codeable access stays read-only
+* Offline fixture tests (`php tests/run.php`)
+
 *0.0.1*
 * Initial build
 

@@ -140,8 +140,8 @@ jQuery(document).ready(function () {
         if ( elProgress.is(':visible') ) {
             elProgress.hide();
 
-            if ( jQuery( '.wrap.wpcable_wrap.tasks' ).length ) {
-                // On the tasks-page silently refresh the task list without reload.
+            if ( jQuery( '.wrap.wpcable-workspace' ).length || jQuery( '.wrap.wpcable_wrap.tasks' ).length ) {
+                // On workspace pages silently refresh lists without a full reload.
                 jQuery( document ).trigger( 'codeable-reload-tasks' );
             } else if ( jQuery( '.wrap.cable_stats_wrap' ).length ) {
                 // On stats-page we can reload the whole window without a problem.

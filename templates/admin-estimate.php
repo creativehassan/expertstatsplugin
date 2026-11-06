@@ -109,6 +109,7 @@
 	<?php codeable_last_fetch_info(); ?>
 
 	<script type="text/javascript">
+		/* Formulas must stay aligned with classes/estimate.php (wpcable_estimate). */
 		jQuery(document).ready(function($) {
 			function round(value, step) {
 				step || (step = 1.0);

@@ -31,24 +31,40 @@ function codeable_transcactions_stats_cb() {
 
 	add_thickbox();
 
-	$account_details   = get_option( 'wpcable_account_details' );
+	$account_details   = wpcable_get_account_details();
 	$average_task_size = get_option( 'wpcable_average' );
 	$balance           = get_option( 'wpcable_balance' );
 	$revenue           = get_option( 'wpcable_revenue' );
 
 	$wpcable_stats = new wpcable_stats();
+	$wpcable_tasks = new wpcable_tasks();
+	$local_counts  = $wpcable_tasks->get_state_counts();
+	$tx_count      = $wpcable_stats->get_transaction_count();
 
 	$get_first_task = $wpcable_stats->get_first_task();
 	$get_last_task  = $wpcable_stats->get_last_task();
 
-	$first_day   = date( 'd', strtotime( $get_first_task['dateadded'] ) );
-	$first_month = date( 'm', strtotime( $get_first_task['dateadded'] ) );
-	$first_year  = date( 'Y', strtotime( $get_first_task['dateadded'] ) );
-	$last_day    = date( 'd', strtotime( $get_last_task['dateadded'] ) );
-	$last_month  = date( 'm', strtotime( $get_last_task['dateadded'] ) );
-	$last_year   = date( 'Y', strtotime( $get_last_task['dateadded'] ) );
+	$first_date_ok = ! empty( $get_first_task['dateadded'] ) && wpcable_is_valid_datetime( $get_first_task['dateadded'] );
+	$last_date_ok  = ! empty( $get_last_task['dateadded'] ) && wpcable_is_valid_datetime( $get_last_task['dateadded'] );
+	$financial_available = $wpcable_stats->has_transaction_data() && $first_date_ok && $last_date_ok;
 
-	if ( ! isset( $_GET['date_from'] ) ) {
+	$first_day = $first_month = $first_year = $last_day = $last_month = $last_year = '';
+	if ( $first_date_ok ) {
+		$first_day   = date( 'd', strtotime( $get_first_task['dateadded'] ) );
+		$first_month = date( 'm', strtotime( $get_first_task['dateadded'] ) );
+		$first_year  = date( 'Y', strtotime( $get_first_task['dateadded'] ) );
+	}
+	if ( $last_date_ok ) {
+		$last_day    = date( 'd', strtotime( $get_last_task['dateadded'] ) );
+		$last_month  = date( 'm', strtotime( $get_last_task['dateadded'] ) );
+		$last_year   = date( 'Y', strtotime( $get_last_task['dateadded'] ) );
+	}
+
+	if ( ! $financial_available ) {
+		$_GET['date_from'] = '';
+		$_GET['date_to']   = '';
+		$from_day = $from_month = $from_year = $to_day = $to_month = $to_year = '';
+	} elseif ( ! isset( $_GET['date_from'] ) ) {
 		$_GET['date_from'] = $first_year . '-' . $first_month;
 		$from_day          = $first_day;
 		$from_month        = $first_month;
@@ -59,12 +75,12 @@ function codeable_transcactions_stats_cb() {
 		$from_year  = date( 'Y', strtotime( $_GET['date_from'] . '-01' ) );
 	}
 
-	if ( ! isset( $_GET['date_to'] ) ) {
+	if ( $financial_available && ! isset( $_GET['date_to'] ) ) {
 		$_GET['date_to'] = $last_year . '-' . $last_month;
 		$to_day          = $last_day;
 		$to_month        = $last_month;
 		$to_year         = $last_year;
-	} else {
+	} elseif ( $financial_available ) {
 		$to_day   = date( 't', strtotime( $_GET['date_to'] . '-01' ) );
 		$to_month = date( 'm', strtotime( $_GET['date_to'] . '-01' ) );
 		$to_year  = date( 'Y', strtotime( $_GET['date_to'] . '-01' ) );
@@ -93,15 +109,17 @@ function codeable_transcactions_stats_cb() {
 		$chart_display_method = $_GET['chart_display_method'];
 	}
 
-	// get initial stats
-	$get_all_stats = $wpcable_stats->get_all_stats( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year, $chart_display_method );
-
-	foreach ( $get_all_stats as $stats_key => $stats_data ) {
-		${$stats_key} = $stats_data;
+	// get initial stats — skip date math when transactions are missing (no fake 1970 / $0).
+	$get_all_stats = array();
+	if ( $financial_available ) {
+		$get_all_stats = $wpcable_stats->get_all_stats( $from_day, $from_month, $from_year, $to_day, $to_month, $to_year, $chart_display_method );
+		foreach ( $get_all_stats as $stats_key => $stats_data ) {
+			${$stats_key} = $stats_data;
+		}
 	}
 
 	// get compare stats
-	if ( $is_compare ) {
+	if ( $financial_available && $is_compare ) {
 		$get_compare_stats = $wpcable_stats->get_all_stats( $compare_from_day, $compare_from_month, $compare_from_year, $compare_to_day, $compare_to_month, $compare_to_year, $chart_display_method );
 
 		foreach ( $get_compare_stats as $compare_stats_key => $compare_stats_data ) {
@@ -109,7 +127,9 @@ function codeable_transcactions_stats_cb() {
 		}
 	}
 
-	$all_averages    = $wpcable_stats->get_dates_average( $first_day, $first_month, $first_year, $last_day, $last_month, $last_year );
+	$all_averages    = $financial_available
+		? $wpcable_stats->get_dates_average( $first_day, $first_month, $first_year, $last_day, $last_month, $last_year )
+		: array();
 	$wpcable_clients = new wpcable_clients();
 	$clients_data    = $wpcable_clients->get_clients();
 
@@ -124,37 +144,50 @@ function codeable_transcactions_stats_cb() {
 
 			<div class="box user-info">
 				<div class="avatar">
-					<img class="round" src="<?php echo $account_details['avatar']['large_url']; ?>"/>
-					<div class="rating" data-score="<?php echo $account_details['stats']['avg_rating']; ?>"></div>
+					<?php
+					$avatar_url = wpcable_account_avatar_url( $account_details );
+					if ( $avatar_url ) :
+						?>
+						<img class="round" src="<?php echo esc_url( $avatar_url ); ?>"/>
+						<?php
+					endif;
+					?>
+					<div class="rating" data-score="<?php echo esc_attr( wpcable_account_stat( $account_details, 'avg_rating', '' ) ); ?>"></div>
 				</div>
 				<div class="details">
 					<div class="codeable-logo">
 						<?php echo '<img src="' . esc_url( plugins_url( 'assets/images/codeable-full.png', dirname( __FILE__ ) ) ) . '" > '; ?>
 					</div>
-					<span class="name"><?php echo $account_details['first_name'] . ' ' . $account_details['last_name']; ?></span>
-					<span class="label role"><?php echo $account_details['role']; ?></span>
-					<span class="user-id"><?php echo __( 'ID', 'wpcable' ) . ': <a href="https://app.codeable.io/tasks/new?preferredContractor=' . $account_details['id'] . '" target="_blank" title="' . __( 'Direct hire link', 'wpcable' ) . '">' . $account_details['id']; ?></a></span>
+					<span class="name"><?php echo esc_html( wpcable_account_detail( $account_details, 'first_name' ) . ' ' . wpcable_account_detail( $account_details, 'last_name' ) ); ?></span>
+					<span class="label role"><?php echo esc_html( wpcable_account_detail( $account_details, 'role' ) ); ?></span>
+					<span class="user-id"><?php echo esc_html__( 'ID', 'wpcable' ) . ': <a href="https://app.codeable.io/tasks/new?preferredContractor=' . esc_attr( wpcable_account_detail( $account_details, 'id' ) ) . '" target="_blank" title="' . esc_attr__( 'Direct hire link', 'wpcable' ) . '">' . esc_html( wpcable_account_detail( $account_details, 'id' ) ); ?></a></span>
+					<span class="wpcable-source-chip"><?php esc_html_e( 'Source: users/me profile', 'wpcable' ); ?></span>
 				</div>
 			</div>
 
 			<div class="box completed-tasks">
 				<div class="column_inner">
 					<div class="maindata">
-						<div class="label"><?php echo __( 'Completed Tasks', 'wpcable' ); ?></div>
-						<div class="value"><?php echo $account_details['completed_tasks_count']; ?></div>
+						<div class="label"><?php echo esc_html__( 'Profile completed', 'wpcable' ); ?></div>
+						<div class="value"><?php echo esc_html( wpcable_account_detail( $account_details, 'completed_tasks_count', '—' ) ); ?></div>
 					</div>
 					<div class="footerdata">
-						<span class="label"><?php echo __( 'Tasks', 'wpcable' ); ?></span>:
+						<span class="label"><?php echo esc_html__( 'Profile tasks_count', 'wpcable' ); ?></span>:
 						<span class="value">
-							<?php echo $account_details['tasks_count']; ?>
+							<?php echo esc_html( wpcable_account_detail( $account_details, 'tasks_count', '—' ) ); ?>
 						</span><br/>
-						<span class="label"><?php echo __( 'Refunded', 'wpcable' ); ?></span>:
-						<span class="value">
-							<?php echo $clients_data['totals']['refunds']; ?>
-						</span>
+						<span class="label"><?php echo esc_html__( 'Imported local rows', 'wpcable' ); ?></span>:
+						<span class="value"><?php echo esc_html( number_format_i18n( (int) $local_counts['imported'] ) ); ?></span>
+						<p class="description">
+							<?php esc_html_e( 'Profile counts and imported project rows are different scopes. Do not treat them as one number.', 'wpcable' ); ?>
+						</p>
 						<p>
-							<a href="<?php echo esc_url( admin_url( 'admin.php?page=codeable_tasks') ); ?>">
-								<?php _e( 'See all your tasks', 'wpcable' ); ?>
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=codeable_tasks' ) ); ?>">
+								<?php esc_html_e( 'Open the projects workspace', 'wpcable' ); ?>
+							</a>
+							|
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=codeable_clients' ) ); ?>">
+								<?php esc_html_e( 'Clients', 'wpcable' ); ?>
 							</a>
 						</p>
 					</div>
@@ -164,27 +197,63 @@ function codeable_transcactions_stats_cb() {
 			<div class="box balance">
 				<div class="column_inner">
 					<div class="maindata">
-						<div class="label"><?php echo __( 'Balance', 'wpcable' ); ?></div>
-						<div class="value">$<?php echo wpcable_money( $balance ); ?></div>
+						<div class="label"><?php echo esc_html__( 'Balance', 'wpcable' ); ?></div>
+						<div class="value">
+							<?php
+							if ( $financial_available && is_numeric( $balance ) ) {
+								echo esc_html( '$' . wpcable_money( $balance ) );
+							} else {
+								echo '<span class="wpcable-kpi--unavailable">' . esc_html__( 'Unavailable', 'wpcable' ) . '</span>';
+							}
+							?>
+						</div>
 					</div>
+					<?php if ( ! $financial_available ) : ?>
+						<p class="description"><?php esc_html_e( 'Money transactions are not imported. This is not $0.', 'wpcable' ); ?></p>
+					<?php endif; ?>
 				</div>
 			</div>
 
 			<div class="box total-revenue">
 				<div class="column_inner">
 					<div class="maindata">
-						<div class="label"><?php echo __( 'Total Revenue', 'wpcable' ); ?></div>
-						<div class="value">$<?php echo wpcable_money( $revenue ); ?></div>
+						<div class="label"><?php echo esc_html__( 'Total Revenue', 'wpcable' ); ?></div>
+						<div class="value">
+							<?php
+							if ( $financial_available && is_numeric( $revenue ) ) {
+								echo esc_html( '$' . wpcable_money( $revenue ) );
+							} else {
+								echo '<span class="wpcable-kpi--unavailable">' . esc_html__( 'Unavailable', 'wpcable' ) . '</span>';
+							}
+							?>
+						</div>
 					</div>
 					<div class="footerdata">
-						<span class="label"><?php echo __( 'Since', 'wpcable' ); ?></span>: <span
-								class="value"><?php echo wpcable_date( $get_first_task['dateadded'] ); ?></span>
+						<?php if ( $financial_available && ! empty( $get_first_task['dateadded'] ) ) : ?>
+							<span class="label"><?php echo esc_html__( 'Since', 'wpcable' ); ?></span>:
+							<span class="value"><?php echo esc_html( wpcable_date( $get_first_task['dateadded'] ) ); ?></span>
+						<?php else : ?>
+							<span class="description"><?php esc_html_e( 'No transaction date range — hiding 1970/empty defaults.', 'wpcable' ); ?></span>
+						<?php endif; ?>
 					</div>
 				</div>
 			</div>
 
 		</div>
 		<!-- end row  -->
+
+		<?php if ( ! $financial_available ) : ?>
+			<div class="wpcable-financial-empty">
+				<h2><?php esc_html_e( 'Money charts are hidden', 'wpcable' ); ?></h2>
+				<p>
+					<?php esc_html_e( 'Transactions have not imported into the local database. Showing $0.00 or January 1970 would be misleading, so revenue, fees, monthly charts, and the transaction-based client table stay hidden until this source succeeds.', 'wpcable' ); ?>
+				</p>
+				<p>
+					<a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=codeable_tasks' ) ); ?>"><?php esc_html_e( 'Go to projects workspace', 'wpcable' ); ?></a>
+					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=codeable_clients' ) ); ?>"><?php esc_html_e( 'Open clients (from imported projects)', 'wpcable' ); ?></a>
+				</p>
+			</div>
+		<?php else : ?>
 
 		<!--  Row  -->
 		<div class="flex-row second-stats-row">
@@ -201,7 +270,7 @@ function codeable_transcactions_stats_cb() {
 								<span class="label"><?php echo __( 'Month conversion', 'wpcable' ); ?></span>
 							</td>
 							<td>
-								<span class="value"><?php echo $account_details['stats']['estimated_completed_conversion_1_month'] * 100; ?>
+								<span class="value"><?php echo esc_html( wpcable_account_stat( $account_details, 'estimated_completed_conversion_1_month', 0 ) * 100 ); ?>
 									%</span>
 							</td>
 						</tr>
@@ -210,7 +279,7 @@ function codeable_transcactions_stats_cb() {
 								<span class="label"><?php echo __( '6 Month conversion', 'wpcable' ); ?></span>
 							</td>
 							<td>
-								<span class="value"><?php echo $account_details['stats']['estimated_completed_conversion_6_months'] * 100; ?>
+								<span class="value"><?php echo esc_html( wpcable_account_stat( $account_details, 'estimated_completed_conversion_6_months', 0 ) * 100 ); ?>
 									%</span>
 							</td>
 						</tr>
@@ -573,11 +642,14 @@ function codeable_transcactions_stats_cb() {
 			</div>
 		</div>
 
+		<?php endif; ?>
+
 	</div>
 
 	<?php codeable_last_fetch_info(); ?>
 
 
+	<?php if ( $financial_available ) : ?>
 	<script>
 
 		jQuery(function () {
@@ -1108,6 +1180,7 @@ function codeable_transcactions_stats_cb() {
 
 		});
 	</script>
+	<?php endif; ?>
 
 
 	<?php

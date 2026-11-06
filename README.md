@@ -2,7 +2,7 @@
 # Codeable Expert Stats Plugin Readme
 *Contributors:* Spyros Vlachopoulos, Panagiotis Synetos, John Leskas, Justin Frydman, Jonathan Bossenger, Rob Scott, Philipp Stracker, Milan Dinić
 
-*Tested up to:* WordPress 5.2.2
+*Tested up to:* WordPress 6.8
 
 Codeable Expert Stats plugin makes it easy for you to track and monitor your success as an expert on Codeable via an easy-to-understand dashboard for your personal/agency WordPress site.
 
@@ -18,15 +18,20 @@ The dashboard and stats provided by the Codeable web app for experts is a bit la
 ### Features
 
 1. All your regular stats from Codeable now in your WordPress dashboard.
-2. Filter stats by date range
+2. Filter stats by date range (when money transactions have imported)
 3. Monthly averages of revenue and fees
 4. Monthly money chart
 5. Best month and best month’s revenue
 6. Amounts range - Your tasks budget groups pie chart
 7. Tasks per month bar graph
-8. Client data - Fully sortable by revenue, avg. per task, total tasks, more…
-9. Client data - Individual client detail modal
-10. PERT Calculator
+8. Projects workspace — server-side pagination, search, status/flag filters, client grouping, task drawer, collapsed local notes
+9. Clients page — `client_id` join from imported projects (not fabricated leads)
+10. Opportunities — evidence-backed suggestions with source rows and confidence; review-only drafts, no auto-send
+11. Honest empty states when a source is missing (transactions unavailable is not $0 / not 1970)
+12. PERT Calculator (unchanged math)
+13. PHP 8-safe profile/avatar handling for malformed `users/me` payloads
+
+See `docs/MIGRATION.md` for update/rollback notes and `docs/TEST-REPORT.md` for offline tests.
 
 
 ### Installation
@@ -35,7 +40,7 @@ Note: SSL enabled sites highly encouraged for the use of this plugin please.
 
 1. Upload the `expertstatsplugin-master` folder and it's contents to the `/wp-content/plugins/` directory or install the .zip via the WP plugins panel in your WordPress admin dashboard
 2. Activate the plugin through the 'Plugins' menu in WordPress
-3. That's it! You should now be able to access the Plugin's options via `Codeable Stats` link on WordPress dashboard menu.  You will need to enter your Codeable Username and Password under Settings then ‘Fetch remote data’.
+3. That's it! You should now be able to access the Plugin's options via `Codeable Stats` link on WordPress dashboard menu.  You will need to enter your Codeable Username and Password under Settings then ‘Fetch remote data’. Fetch is read-only: this plugin does not send messages, estimates, or payouts.
 
 ### Get Automatic Updates When New Versions Released (Since version 0.0.4)
 Use GitHub Updater plugin to allow automatic updates of this plugin from the GitHub repo.
