@@ -1,5 +1,14 @@
 ### Changelog
 
+*0.4.1 (2026-11-06)*
+* QA patch after 0.4.0 live install: reject invalid/future/Y2K38 activity timestamps so ages are not `-4092d ago` and 19 Jan 2038 is not shown
+* Opportunity scores ignore sentinel/future activity
+* Constrain plugin-scoped workspace avatars (max 32×32, object-fit)
+* Import health distinguishes cached local rows vs instrumented attempts; never invents success times from `last_fetch` / MAX(activity)
+* KPI filter counts use the same SQL as the matching table filter; state vs local flag labeled
+* Page views and hourly cron no longer enqueue a new GET queue; explicit Refresh only; pending interrupted queues still resume; concurrent tab lock
+* Project drawer: honest unavailable description/comments panels + existing workroom URL; no comments importer
+
 *0.4.0 (2026-11-06)*
 * Hybrid workspace inside this plugin: server-side Tasks pagination/search/filters/client grouping + Clients page + evidence-backed Opportunities
 * Preserve existing slugs (`codeable_transcactions_stats`, `codeable_tasks`, `codeable_estimate`, `codeable_settings`); Estimate math and Settings options unchanged

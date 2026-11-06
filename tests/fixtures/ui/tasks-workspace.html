@@ -30,20 +30,20 @@ table.widefat th,table.widefat td{border-bottom:1px solid #dcdcde;padding:8px;te
       <p class="wpcable-lede">Imported Codeable projects, paginated on the server. Profile totals from users/me are a different scope than these local rows. Codeable access stays read-only; only your local notes and flags are saved here.</p>
       <div class="wpcable-kpi-row">
         <div class="wpcable-kpi"><span class="wpcable-kpi__label">Profile completed</span><span class="wpcable-kpi__value">911</span><span class="wpcable-kpi__meta">users/me completed_tasks_count — not the local table</span></div>
-        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Imported rows</span><span class="wpcable-kpi__value">30</span><span class="wpcable-kpi__meta">Local codeable_tasks rows (all filters)</span></div>
-        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Published</span><span class="wpcable-kpi__value">27</span><span class="wpcable-kpi__meta">Local state = published</span></div>
-        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Completed flag</span><span class="wpcable-kpi__value">2</span><span class="wpcable-kpi__meta">Local flag = completed</span></div>
-        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Lost (local)</span><span class="wpcable-kpi__value">1</span><span class="wpcable-kpi__meta">Heuristic — not proof nobody else was hired</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Imported rows</span><span class="wpcable-kpi__value">30</span><span class="wpcable-kpi__meta">COUNT(*) local codeable_tasks — matches All</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Published (filter)</span><span class="wpcable-kpi__value">26</span><span class="wpcable-kpi__meta">state = published AND flag ≠ lost — same SQL as the Published button</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Completed (filter)</span><span class="wpcable-kpi__value">2</span><span class="wpcable-kpi__meta">state OR local flag = completed — same SQL as the Completed button</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Lost (filter)</span><span class="wpcable-kpi__value">1</span><span class="wpcable-kpi__meta">state OR local flag = lost. Heuristic, not hire proof. Refresh may rewrite flags; page views do not.</span></div>
         <div class="wpcable-kpi wpcable-kpi--unavailable"><span class="wpcable-kpi__label">Transactions</span><span class="wpcable-kpi__value">Missing</span><span class="wpcable-kpi__meta">Unavailable — not $0 revenue</span></div>
       </div>
       <div class="wpcable-toolbar">
         <div class="wpcable-filters">
-          <span class="button button-primary">All</span>
-          <span class="button">Published</span>
-          <span class="button">Completed</span>
+          <span class="button button-primary">All <span class="wpcable-filter-count">(30)</span></span>
+          <span class="button">Published <span class="wpcable-filter-count">(26)</span></span>
+          <span class="button">Completed <span class="wpcable-filter-count">(2)</span></span>
           <span class="button">Paid</span>
           <span class="button">Estimated</span>
-          <span class="button">Lost</span>
+          <span class="button">Lost <span class="wpcable-filter-count">(1)</span></span>
           <span class="button">Preferred</span>
           <span class="button">Has notes</span>
         </div>
@@ -54,7 +54,7 @@ table.widefat th,table.widefat td{border-bottom:1px solid #dcdcde;padding:8px;te
             <thead><tr><th>Client</th><th>Last activity</th><th>Project</th><th>Value</th><th>Title</th><th>Status / flags</th><th>Notes</th></tr></thead>
             <tbody>
               <tr class="wpcable-group-row"><td colspan="7">Fixture Client Alpha · client_id 101</td></tr>
-              <tr><td>Fixture Client Alpha</td><td>200d ago</td><td>#1</td><td>$1500</td><td>Alpha site rebuild</td><td>completed / completed ★</td><td><div class="wpcable-notes-preview">Has notes</div></td></tr>
+              <tr><td class="wpcable-client-cell"><img class="wpcable-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%232271b1'/%3E%3C/svg%3E" alt="" width="32" height="32" /><span>Fixture Client Alpha</span></td><td>200d ago</td><td>#1</td><td>$1500</td><td>Alpha site rebuild</td><td>completed / completed ★</td><td><div class="wpcable-notes-preview">Has notes</div></td></tr>
               <tr><td>Fixture Client Alpha</td><td>200d ago</td><td>#2</td><td>$800</td><td>Alpha maintenance</td><td>completed / completed ★</td><td><div class="wpcable-notes-preview is-empty">No local notes</div></td></tr>
               <tr><td>Fixture Client Alpha</td><td>today</td><td>#3</td><td>—</td><td>Alpha new idea</td><td>published</td><td><div class="wpcable-notes-preview is-empty">No local notes</div></td></tr>
               <tr class="wpcable-group-row"><td colspan="7">Fixture Client Beta · client_id 202</td></tr>
@@ -70,6 +70,16 @@ table.widefat th,table.widefat td{border-bottom:1px solid #dcdcde;padding:8px;te
             <p>Fixture Client Alpha · client_id 101</p>
             <p><strong>Status:</strong> completed / task / flag completed · preferred</p>
             <p><strong>Value:</strong> $1500 <span class="wpcable-source-chip">from task prices, not transactions</span></p>
+            <section class="wpcable-history-panel">
+              <h3>Project description</h3>
+              <p>Unavailable in this plugin. Local codeable_tasks stores title, state, flags, prices, last_activity, and local notes — not the full project body. No official public Codeable API contract for description was found, so this plugin does not import or invent one.</p>
+            </section>
+            <section class="wpcable-history-panel">
+              <h3>Workroom comments</h3>
+              <p>Not imported — this is not an empty comment history. There is no comments column and no documented comments endpoint used by this plugin. Local notes are WordPress-only and are not Codeable comments. Open the workroom in Codeable to read the live thread.</p>
+              <p><a class="button" href="https://app.codeable.io/tasks/1/workroom" target="_blank" rel="noopener">Open workroom (read-only)</a></p>
+              <p class="description">Local notes below are yours in WordPress. They are not Codeable comments.</p>
+            </section>
             <p class="description">These notes stay in WordPress. They are never sent to Codeable.</p>
             <h3>Suggested next step</h3>
             <ul><li><strong>Completed-project follow-up</strong> <span class="wpcable-badge">MEDIUM</span><br /><span class="description">Local completed flag on 2 project(s); last recorded activity is 200 days ago. Not a confirmed client need.</span></li></ul>

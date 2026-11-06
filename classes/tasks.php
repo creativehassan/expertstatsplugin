@@ -64,15 +64,12 @@ class wpcable_tasks {
 	}
 
 	/**
-	 * Server-side task query with pagination, search, state/flag filters, and optional client grouping.
+	 * Shared filter args so KPI / toolbar / table COUNT use the same SQL.
 	 *
-	 * @param array $args Query args.
-	 * @return array { items, total, page, per_page, grouped, counts }
+	 * @return array
 	 */
-	public function query_tasks( $args = [] ) {
-		global $wpdb;
-
-		$defaults = [
+	private function query_defaults() {
+		return [
 			'page'            => 1,
 			'per_page'        => 25,
 			'search'          => '',
@@ -93,13 +90,16 @@ class wpcable_tasks {
 			'orderby'         => 'last_activity',
 			'order'           => 'DESC',
 		];
+	}
 
-		$args     = array_merge( $defaults, $args );
-		$page     = max( 1, (int) $args['page'] );
-		$per_page = (int) $args['per_page'];
-		if ( ! in_array( $per_page, [ 25, 50, 100 ], true ) ) {
-			$per_page = 25;
-		}
+	/**
+	 * WHERE clause + params matching query_tasks filters.
+	 *
+	 * @param array $args Query args already merged with defaults.
+	 * @return array { 0: where_sql, 1: params, 2: client_id }
+	 */
+	private function task_filter_sql( $args ) {
+		global $wpdb;
 
 		$where  = [ '1=1' ];
 		$params = [];
@@ -116,7 +116,7 @@ class wpcable_tasks {
 
 		$state = (string) $args['state'];
 		if ( 'lost' === $state ) {
-			$where[] = '( task.state = %s OR task.flag = %s )';
+			$where[]  = '( task.state = %s OR task.flag = %s )';
 			$params[] = 'lost';
 			$params[] = 'lost';
 		} elseif ( 'all' !== $state && in_array( $state, wpcable_known_task_states(), true ) ) {
@@ -167,7 +167,67 @@ class wpcable_tasks {
 			$params[] = $client_id;
 		}
 
-		$where_sql = implode( ' AND ', $where );
+		return [ implode( ' AND ', $where ), $params, $client_id ];
+	}
+
+	/**
+	 * COUNT(*) using the same WHERE as query_tasks.
+	 *
+	 * @param array $args Filter args.
+	 * @return int
+	 */
+	public function count_matching( $args = [] ) {
+		global $wpdb;
+
+		$args = array_merge( $this->query_defaults(), $args );
+		list( $where_sql, $params ) = $this->task_filter_sql( $args );
+
+		$sql = "SELECT COUNT(*) FROM `{$this->tables['tasks']}` AS task
+			LEFT JOIN `{$this->tables['clients']}` AS client
+				ON client.client_id = task.client_id
+			WHERE {$where_sql}";
+		if ( $params ) {
+			$sql = $wpdb->prepare( $sql, $params );
+		}
+
+		return (int) $wpdb->get_var( $sql );
+	}
+
+	/**
+	 * Toolbar / KPI counts. Each key uses the same SQL as that filter button.
+	 *
+	 * @return array
+	 */
+	public function get_filter_counts() {
+		return [
+			'all'        => $this->count_matching( [ 'state' => 'all' ] ),
+			'published'  => $this->count_matching( [ 'state' => 'published' ] ),
+			'completed'  => $this->count_matching( [ 'completed' => true ] ),
+			'paid'       => $this->count_matching( [ 'paid' => true ] ),
+			'estimated'  => $this->count_matching( [ 'estimated' => true ] ),
+			'lost'       => $this->count_matching( [ 'lost' => true ] ),
+			'preferred'  => $this->count_matching( [ 'preferred' => true ] ),
+			'with_notes' => $this->count_matching( [ 'has_notes' => true ] ),
+		];
+	}
+
+	/**
+	 * Server-side task query with pagination, search, state/flag filters, and optional client grouping.
+	 *
+	 * @param array $args Query args.
+	 * @return array { items, total, page, per_page, grouped, counts }
+	 */
+	public function query_tasks( $args = [] ) {
+		global $wpdb;
+
+		$args     = array_merge( $this->query_defaults(), $args );
+		$page     = max( 1, (int) $args['page'] );
+		$per_page = (int) $args['per_page'];
+		if ( ! in_array( $per_page, [ 25, 50, 100 ], true ) ) {
+			$per_page = 25;
+		}
+
+		list( $where_sql, $params, $client_id ) = $this->task_filter_sql( $args );
 
 		$allowed_orderby = [
 			'last_activity' => 'task.last_activity',
@@ -247,6 +307,8 @@ class wpcable_tasks {
 				'per_page'        => $per_page,
 				'group_by_client' => true,
 				'counts'          => $this->get_state_counts(),
+				'filter_counts'   => $this->get_filter_counts(),
+				'sync'            => $this->sync_payload(),
 			];
 		}
 
@@ -267,6 +329,22 @@ class wpcable_tasks {
 			'per_page'        => $per_page,
 			'group_by_client' => false,
 			'counts'          => $this->get_state_counts(),
+			'filter_counts'   => $this->get_filter_counts(),
+			'sync'            => $this->sync_payload(),
+		];
+	}
+
+	/**
+	 * In-progress Refresh state for the workspace UI. Read-only metadata.
+	 *
+	 * @return array
+	 */
+	private function sync_payload() {
+		$step = wpcable_sync_current_step();
+		return [
+			'running' => wpcable_sync_is_running(),
+			'step'    => $step,
+			'source'  => $step && ! empty( $step['task'] ) ? (string) $step['task'] : '',
 		];
 	}
 
@@ -363,10 +441,12 @@ class wpcable_tasks {
 			"SELECT COUNT(*) FROM `{$this->tables['tasks']}` WHERE notes IS NOT NULL AND notes <> ''"
 		);
 
-		// Lost KPI uses the local flag (heuristic), matching the workspace copy.
-		if ( $counts['flag_lost'] > 0 ) {
-			$counts['lost'] = $counts['flag_lost'];
-		}
+		$filter = $this->get_filter_counts();
+		$counts['filter']            = $filter;
+		$counts['filter_published']  = $filter['published'];
+		$counts['filter_completed']  = $filter['completed'];
+		$counts['filter_lost']       = $filter['lost'];
+		$counts['imported']          = $filter['all'];
 
 		return $counts;
 	}
@@ -407,7 +487,10 @@ class wpcable_tasks {
 		$task['client_fee']    = (float) $task['client_fee'];
 		$task['value']         = (float) $task['value'];
 		$task['value_client']  = (float) $task['value_client'];
-		$task['last_activity'] = (int) $task['last_activity'];
+		$raw_activity          = isset( $task['last_activity'] ) ? $task['last_activity'] : 0;
+		$task['last_activity'] = wpcable_normalize_timestamp( $raw_activity );
+		$task['activity_valid'] = $task['last_activity'] > 0;
+		$task['stale_days']    = wpcable_stale_days( $task['last_activity'] );
 		$task['last_sync']     = (int) $task['last_sync'];
 		$task['task_id']       = (int) $task['task_id'];
 		$task['client_id']     = (int) $task['client_id'];
@@ -424,10 +507,11 @@ class wpcable_tasks {
 		$task['has_notes']     = '' !== trim( $task['notes'] );
 		$task['value_known']   = ( $task['value'] > 0 || $task['value_client'] > 0 );
 		$task['workroom_url']  = wpcable_workroom_url( $task['task_id'] );
+		$task['history']       = wpcable_task_history_unavailable( $task );
 
 		$task['last_activity_date'] = '';
 		$task['last_activity_time'] = '';
-		if ( $task['last_activity'] > 0 && wpcable_is_valid_datetime( $task['last_activity'] ) ) {
+		if ( $task['activity_valid'] ) {
 			$task['last_activity_date'] = date_i18n(
 				get_option( 'date_format' ),
 				$task['last_activity']

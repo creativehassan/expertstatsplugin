@@ -26,7 +26,6 @@ add_action( 'admin_menu', 'wpcable_register_menu_page' );
 function codeable_transcactions_stats_cb() {
 
 	codeable_page_requires_login( __( 'Codeable Stats', 'wpcable' ) );
-	codeable_maybe_refresh_data();
 	codeable_admin_notices();
 
 	add_thickbox();

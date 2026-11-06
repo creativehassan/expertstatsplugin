@@ -40,11 +40,27 @@
 	flex: 2 1 280px;
 }
 
+.wpcable-workspace img.wpcable-avatar,
+.wpcable-workspace .wpcable-client-cell img,
+.wpcable-workspace table img {
+	width: 32px;
+	height: 32px;
+	max-width: 32px;
+	max-height: 32px;
+	object-fit: cover;
+	border-radius: 50%;
+	display: inline-block;
+	vertical-align: middle;
+}
+
 .wpcable-kpi__avatar {
 	width: 56px;
 	height: 56px;
+	max-width: 56px;
+	max-height: 56px;
 	border-radius: 50%;
 	object-fit: cover;
+	display: block;
 }
 
 .wpcable-kpi__label {
@@ -262,7 +278,37 @@
 }
 
 .wpcable-import-health-never,
+.wpcable-import-health-cached,
 .wpcable-import-health-attempted {
+	color: var(--wpcable-muted);
+}
+
+.wpcable-import-health-in_progress {
+	color: #996800;
+}
+
+.wpcable-sync-banner {
+	background: #fcf9e8;
+	border: 1px solid #dba617;
+	border-radius: 6px;
+	padding: 8px 12px;
+	margin: 8px 0 12px;
+}
+
+.wpcable-history-panel {
+	margin: 16px 0;
+	padding: 10px 12px;
+	border: 1px solid var(--wpcable-border);
+	border-radius: 6px;
+	background: #f6f7f7;
+}
+
+.wpcable-history-panel h3 {
+	margin: 0 0 6px;
+}
+
+.wpcable-filter-count {
+	font-weight: 400;
 	color: var(--wpcable-muted);
 }
 

@@ -384,6 +384,9 @@ class wpcable_api_data {
 	 * receive pending/won tasks. This way we know, that all tasks that were not
 	 * fetched by the `store_tasks()` method are not available for us anymore.
 	 *
+	 * 0.4.1: this still runs as the `task:lost` step of an explicit Refresh
+	 * queue. Ordinary page views and WP-Cron no longer enqueue that queue.
+	 *
 	 * @return void
 	 */
 	private function mark_tasks_lost() {

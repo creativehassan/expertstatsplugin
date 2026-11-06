@@ -222,9 +222,9 @@ class wpcable_clients {
 		} elseif ( 'lost' === $filter ) {
 			$having[] = 'SUM( CASE WHEN task.flag = \'lost\' THEN 1 ELSE 0 END ) >= 1';
 		} elseif ( 'stale' === $filter ) {
-			$cutoff     = time() - ( (int) $args['stale_days'] * DAY_IN_SECONDS );
-			$having[]   = 'MAX(task.last_activity) > 0 AND MAX(task.last_activity) < %d';
-			$params[]   = $cutoff;
+			$cutoff   = time() - ( (int) $args['stale_days'] * DAY_IN_SECONDS );
+			$having[] = 'MAX( CASE WHEN task.last_activity > 1199145600 AND task.last_activity < 2147483647 THEN task.last_activity ELSE 0 END ) > 0 AND MAX( CASE WHEN task.last_activity > 1199145600 AND task.last_activity < 2147483647 THEN task.last_activity ELSE 0 END ) < %d';
+			$params[] = $cutoff;
 		}
 
 		$where_sql  = implode( ' AND ', $where );
@@ -270,7 +270,7 @@ class wpcable_clients {
 				SUM( CASE WHEN task.flag = 'lost' THEN 1 ELSE 0 END ) AS lost_count,
 				SUM( CASE WHEN task.state = 'published' THEN 1 ELSE 0 END ) AS published_count,
 				SUM( CASE WHEN task.notes IS NOT NULL AND task.notes <> '' THEN 1 ELSE 0 END ) AS notes_count,
-				MAX(task.last_activity) AS last_activity
+				MAX( CASE WHEN task.last_activity > 1199145600 AND task.last_activity < 2147483647 THEN task.last_activity ELSE 0 END ) AS last_activity
 			{$from_sql}
 			ORDER BY {$orderby} {$order}, task.client_id {$order}
 			LIMIT %d OFFSET %d
@@ -332,8 +332,8 @@ class wpcable_clients {
 	 */
 	private function hydrate_client_row( $row, $with_tasks = false ) {
 		$client_id = (int) $row['client_id'];
-		$last_act  = isset( $row['last_activity'] ) ? (int) $row['last_activity'] : 0;
-		$stale     = ( $last_act > 0 ) ? (int) floor( ( time() - $last_act ) / DAY_IN_SECONDS ) : 0;
+		$last_act  = wpcable_normalize_timestamp( isset( $row['last_activity'] ) ? $row['last_activity'] : 0 );
+		$stale     = wpcable_stale_days( $last_act );
 
 		$client = array(
 			'client_id'       => $client_id,
@@ -357,6 +357,7 @@ class wpcable_clients {
 				'with_notes'  => (int) $row['notes_count'],
 			),
 			'last_activity'   => $last_act,
+			'activity_valid'  => $last_act > 0,
 			'stale_days'      => $stale,
 			'tasks'           => array(),
 			'financial'       => array(

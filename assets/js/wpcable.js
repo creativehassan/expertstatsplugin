@@ -102,6 +102,9 @@ jQuery(document).ready(function () {
 
 /**
  * Sync handler.
+ *
+ * 0.4.1: page load resumes an already-pending Refresh queue only. It does not
+ * start a new queue. Click Refresh for new Codeable GET work.
  */
 jQuery(document).ready(function () {
     var elProgress = jQuery( '.codeable-sync-progress' );
@@ -110,16 +113,21 @@ jQuery(document).ready(function () {
         return;
     }
 
-    function processNext() {
+    function syncNonce() {
+        return elProgress.data( 'nonce' ) || '';
+    }
+
+    function processNext( delayMs ) {
         window.setTimeout(function () {
             jQuery.post(
                 window.ajaxurl,
                 {
-                    action: 'wpcable_sync_process'
+                    action: 'wpcable_sync_process',
+                    _wpnonce: syncNonce()
                 },
                 checkSyncStatus
             );
-        }, 1);
+        }, delayMs || 1);
     }
 
     function showProgressBar( step ) {
@@ -134,11 +142,13 @@ jQuery(document).ready(function () {
 
         elProgress.show();
         elProgress.find( '.msg' ).text( label );
+        jQuery( '#wpcable-sync-banner' ).prop( 'hidden', false );
     }
 
     function hideProgressBar() {
         if ( elProgress.is(':visible') ) {
             elProgress.hide();
+            jQuery( '#wpcable-sync-banner' ).prop( 'hidden', true );
 
             if ( jQuery( '.wrap.wpcable-workspace' ).length || jQuery( '.wrap.wpcable_wrap.tasks' ).length ) {
                 // On workspace pages silently refresh lists without a full reload.
@@ -158,9 +168,14 @@ jQuery(document).ready(function () {
             state = res.data.state
         }
 
+        if ( state === 'FORBIDDEN' ) {
+            hideProgressBar();
+            return;
+        }
+
         if ( state === 'RUNNING' || state === 'READY' ) {
             showProgressBar( res.data.step );
-            processNext();
+            processNext( res.data && res.data.concurrent ? 1500 : 1 );
         } else {
             hideProgressBar();
         }
@@ -170,7 +185,8 @@ jQuery(document).ready(function () {
         jQuery.post(
             window.ajaxurl,
             {
-                action: 'wpcable_sync_start'
+                action: 'wpcable_sync_start',
+                _wpnonce: syncNonce()
             },
             checkSyncStatus
         );
@@ -181,11 +197,9 @@ jQuery(document).ready(function () {
 
     jQuery( '.sync-start' ).on( 'click', startSync );
 
-    // Check, if a sync process is active from previous page load.
+    // Resume an interrupted Refresh only. Empty queue returns FINISHED and
+    // does not enqueue new work (wpcable_sync_process no longer auto-starts).
     processNext();
-
-    // Check for new sync process every 5 minutes.
-    window.setInterval( processNext, 300000 );
 });
 
 /**

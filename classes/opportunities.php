@@ -116,10 +116,10 @@ class wpcable_opportunities {
 		);
 
 		$latest_completed = $this->latest_activity( $completed_tasks );
-		$stale_days       = $this->stale_days( $latest_completed );
+		$stale_days       = wpcable_stale_days( $latest_completed );
 		$out              = array();
 
-		if ( $completed >= 1 && $stale_days >= self::STALE_DAYS ) {
+		if ( $completed >= 1 && null !== $stale_days && $stale_days >= self::STALE_DAYS ) {
 			$out[] = $this->make_suggestion(
 				$client,
 				'ebr_checkup',
@@ -359,7 +359,7 @@ class wpcable_opportunities {
 	private function latest_activity( $tasks ) {
 		$latest = 0;
 		foreach ( $tasks as $task ) {
-			$ts = isset( $task['last_activity'] ) ? (int) $task['last_activity'] : 0;
+			$ts = wpcable_normalize_timestamp( isset( $task['last_activity'] ) ? $task['last_activity'] : 0 );
 			if ( $ts > $latest ) {
 				$latest = $ts;
 			}

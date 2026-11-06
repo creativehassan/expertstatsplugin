@@ -5,7 +5,7 @@
  * Plugin Name:       Codeable - Expert's Stats
  * Plugin URI:        https://github.com/codeablehq/blackbook/wiki/Expert-Stats-Plugin
  * Description:       Get your Codeable data
- * Version:           0.4.0
+ * Version:           0.4.1
  * Author:            Spyros Vlachopoulos
  * Contributors:      Panagiotis Synetos, John Leskas, Justin Frydman, Jonathan Bossenger, Rob Scott, Philipp Stracker, Peter Kakoma
  * Author URI:        https://codeable.io/developers/spyros-vlachopoulos/
@@ -54,7 +54,10 @@ require_once WPCABLE_FUNCTIONS_DIR . '/admin-clients.php';
 require_once WPCABLE_FUNCTIONS_DIR . '/admin-opportunities.php';
 
 /**
- * Maybe sync with API server.
+ * Hourly WP-Cron hook. 0.4.1 does not enqueue a new Codeable GET queue here.
+ * Explicit Refresh remains the only new-queue trigger so page views cannot
+ * race mark_tasks_lost() against KPI counts. Existing pending queues are
+ * left untouched for resume.
  *
  * @return void
  */
@@ -76,58 +79,77 @@ function wpcable_cronstarter_activation() {
 add_action( 'wp', 'wpcable_cronstarter_activation' );
 
 function wpcable_sync_start() {
-	$queue = get_option( 'wpcable_api_queue' );
-	$data  = new wpcable_api_data();
+	if ( ! wpcable_ajax_can_manage( 'wpcable-sync' ) ) {
+		wp_send_json_error( [ 'state' => 'FORBIDDEN' ], 403 );
+	}
 
-	// Initialize the API queue on first call.
-	if ( ! empty( $queue ) && is_array( $queue ) ) {
-		$task = array_shift( $queue );
+	$queue = wpcable_sync_queue();
+
+	// Resume an interrupted Refresh. Do not replace the pending queue.
+	if ( ! empty( $queue ) ) {
 		wp_send_json_error( [
-			'state' => 'RUNNING',
-			'step'  => $task,
+			'state'  => 'RUNNING',
+			'step'   => $queue[0],
+			'source' => 'pending_queue',
 		] );
 	}
 
+	$data  = new wpcable_api_data();
 	$queue = $data->prepare_queue();
 	update_option( 'wpcable_api_queue', $queue );
-	wp_send_json_success( [ 'state' => 'READY' ] );
+	wp_send_json_success( [
+		'state' => 'READY',
+		'step'  => isset( $queue[0] ) ? $queue[0] : null,
+	] );
 }
 add_action( 'wp_ajax_wpcable_sync_start', 'wpcable_sync_start' );
 
 /**
- * Process the next API call and update the DB. When no API call is enqueued this
- * Ajax handler will initialize the API queue.
+ * Process the next queued API call. Does not start a new queue.
+ * Concurrent tabs that lose the lock report RUNNING without shifting the queue.
  */
 function wpcable_sync_process() {
-	$queue = get_option( 'wpcable_api_queue' );
-	$data  = new wpcable_api_data();
+	if ( ! wpcable_ajax_can_manage( 'wpcable-sync' ) ) {
+		wp_send_json_error( [ 'state' => 'FORBIDDEN' ], 403 );
+	}
 
-	// Initialize the API queue on first call.
-	if ( empty( $queue ) || ! is_array( $queue ) ) {
+	$queue = wpcable_sync_queue();
+
+	if ( empty( $queue ) ) {
+		wpcable_sync_lock_release();
 		wp_send_json_error( [ 'state' => 'FINISHED' ] );
 	}
 
-	// Process the next pending task.
+	if ( ! wpcable_sync_lock_acquire() ) {
+		wp_send_json_error( [
+			'state'      => 'RUNNING',
+			'step'       => $queue[0],
+			'source'     => 'in_progress_locked',
+			'concurrent' => true,
+		] );
+	}
+
+	$data = new wpcable_api_data();
 	$task = array_shift( $queue );
 	$next = $data->process_queue( $task );
 
-	// Re-Insert partially completed tasks into the queue.
 	if ( $next ) {
 		array_unshift( $queue, $next );
 	}
 
-	// Store the timestamp of last full-sync in the options table.
 	if ( empty( $queue ) ) {
 		update_option( 'wpcable_last_fetch', time() );
-		delete_option( 'wpcable_api_queue', $queue );
+		delete_option( 'wpcable_api_queue' );
+		wpcable_sync_lock_release();
 		wp_send_json_error( [ 'state' => 'FINISHED' ] );
-	} else {
-		update_option( 'wpcable_api_queue', $queue );
-		wp_send_json_error( [
-			'state' => 'RUNNING',
-			'step'  => $task,
-		] );
 	}
+
+	update_option( 'wpcable_api_queue', $queue );
+	wpcable_sync_lock_release();
+	wp_send_json_error( [
+		'state' => 'RUNNING',
+		'step'  => $task,
+	] );
 }
 add_action( 'wp_ajax_wpcable_sync_process', 'wpcable_sync_process' );
 
@@ -271,7 +293,9 @@ function wpcable_admin_scripts( $hook ) {
 	);
 	wp_enqueue_style(
 		'wpcablecss',
-		plugins_url( 'assets/css/wpcable.css', __FILE__ )
+		plugins_url( 'assets/css/wpcable.css', __FILE__ ),
+		[],
+		'0.4.1'
 	);
 	wp_enqueue_style(
 		'ratycss',
@@ -334,7 +358,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcablejs',
 		plugins_url( 'assets/js/wpcable.js', __FILE__ ),
 		[ 'wp-util' ],
-		'0.4.0',
+		'0.4.1',
 		true
 	);
 
@@ -342,7 +366,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcable-workspace',
 		plugins_url( 'assets/css/wpcable-workspace.css', __FILE__ ),
 		[ 'wpcablecss' ],
-		'0.4.0'
+		'0.4.1'
 	);
 
 	$workspace_hooks = [
@@ -356,7 +380,7 @@ function wpcable_admin_scripts( $hook ) {
 			'wpcable-workspace',
 			plugins_url( 'assets/js/wpcable-workspace.js', __FILE__ ),
 			[ 'jquery', 'wp-util', 'simplemde', 'wpcablejs' ],
-			'0.4.0',
+			'0.4.1',
 			true
 		);
 
@@ -381,8 +405,11 @@ function wpcable_admin_scripts( $hook ) {
 					'reviewOnly'       => __( 'Review only — this plugin never sends outreach.', 'wpcable' ),
 					'notesLocal'       => __( 'Local notes only. Nothing is written back to Codeable.', 'wpcable' ),
 					'suggested'        => __( 'Suggested from local records. Not a confirmed client need.', 'wpcable' ),
-					'profileCompleted' => __( 'Profile completed (users/me) — different scope from imported rows', 'wpcable' ),
-					'importedRows'     => __( 'Imported project rows (local database)', 'wpcable' ),
+					'profileCompleted'    => __( 'Profile completed (users/me) — different scope from imported rows', 'wpcable' ),
+					'importedRows'        => __( 'Imported project rows (local database)', 'wpcable' ),
+					'historyUnavailable'  => __( 'Unavailable in this plugin. The local table stores the title, not the full project body.', 'wpcable' ),
+					'commentsUnavailable' => __( 'Workroom comments are not imported. This is not an empty comment history.', 'wpcable' ),
+					'notesNotComments'    => __( 'Local notes below are yours in WordPress. They are not Codeable comments.', 'wpcable' ),
 				],
 				'kpis'    => [
 					'profileCompleted' => wpcable_account_detail( $account, 'completed_tasks_count', null ),

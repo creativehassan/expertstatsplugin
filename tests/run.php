@@ -34,6 +34,9 @@ require __DIR__ . '/test-estimate.php';
 echo "\n5) Opportunity provenance\n";
 require __DIR__ . '/test-opportunities.php';
 
+echo "\n6) 0.4.1 QA: dates, health provenance, counts, concurrency\n";
+require __DIR__ . '/test-qa-041.php';
+
 echo "\n=====================================\n";
 echo 'Passed: ' . $wpcable_assertions['pass'] . '  Failed: ' . $wpcable_assertions['fail'] . "\n";
 

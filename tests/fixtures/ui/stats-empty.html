@@ -40,11 +40,11 @@
       <div class="wpcable-import-health" style="margin-top:20px;background:#fff;padding:12px;border:1px solid #dcdcde;border-radius:8px">
         <strong>Import health (per source)</strong>
         <ul class="wpcable-import-health-list">
-          <li class="wpcable-import-health-success"><span class="wpcable-import-health-label">Expert profile (users/me)</span> Imported</li>
-          <li class="wpcable-import-health-success"><span class="wpcable-import-health-label">Imported tasks</span> Imported</li>
-          <li class="wpcable-import-health-missing"><span class="wpcable-import-health-label">Money transactions</span> Unavailable — No local transaction rows. Not $0 revenue.</li>
+          <li class="wpcable-import-health-cached"><span class="wpcable-import-health-label">Expert profile (users/me)</span> Cached locally — no recorded attempt</li>
+          <li class="wpcable-import-health-cached"><span class="wpcable-import-health-label">Imported tasks</span> 30 local rows — no recorded attempt. Cached imports are not the same as an instrumented Refresh.</li>
+          <li class="wpcable-import-health-never"><span class="wpcable-import-health-label">Money transactions</span> No recorded attempt and no local rows. Missing is not $0 revenue.</li>
         </ul>
-        <p class="description">No completed refresh queue is stored. Timestamps are shown only when that source actually succeeded.</p>
+        <p class="description">No completed refresh queue is stored. Per-source timestamps appear only after an instrumented attempt recorded success — never from cached row dates. Click Refresh to start a read-only Codeable GET queue. Page views do not enqueue one.</p>
       </div>
     </div>
   </main>

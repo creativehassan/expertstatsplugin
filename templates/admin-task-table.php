@@ -33,23 +33,23 @@ $financial_ok      = $tx_count > 0;
 		</div>
 		<div class="wpcable-kpi">
 			<span class="wpcable-kpi__label"><?php esc_html_e( 'Imported rows', 'wpcable' ); ?></span>
-			<span class="wpcable-kpi__value"><?php echo esc_html( number_format_i18n( (int) $counts['imported'] ) ); ?></span>
-			<span class="wpcable-kpi__meta"><?php esc_html_e( 'Local codeable_tasks rows (all filters)', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__value" data-kpi="imported"><?php echo esc_html( number_format_i18n( (int) $counts['imported'] ) ); ?></span>
+			<span class="wpcable-kpi__meta"><?php esc_html_e( 'COUNT(*) local codeable_tasks — matches All', 'wpcable' ); ?></span>
 		</div>
 		<div class="wpcable-kpi">
-			<span class="wpcable-kpi__label"><?php esc_html_e( 'Published', 'wpcable' ); ?></span>
-			<span class="wpcable-kpi__value"><?php echo esc_html( number_format_i18n( (int) $counts['published'] ) ); ?></span>
-			<span class="wpcable-kpi__meta"><?php esc_html_e( 'Local state = published', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__label"><?php esc_html_e( 'Published (filter)', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__value" data-kpi="published"><?php echo esc_html( number_format_i18n( isset( $counts['filter_published'] ) ? (int) $counts['filter_published'] : (int) $counts['published'] ) ); ?></span>
+			<span class="wpcable-kpi__meta"><?php esc_html_e( 'state = published AND flag ≠ lost — same SQL as the Published button', 'wpcable' ); ?></span>
 		</div>
 		<div class="wpcable-kpi">
-			<span class="wpcable-kpi__label"><?php esc_html_e( 'Completed flag', 'wpcable' ); ?></span>
-			<span class="wpcable-kpi__value"><?php echo esc_html( number_format_i18n( (int) $counts['flag_completed'] ) ); ?></span>
-			<span class="wpcable-kpi__meta"><?php esc_html_e( 'Local flag = completed', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__label"><?php esc_html_e( 'Completed (filter)', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__value" data-kpi="completed"><?php echo esc_html( number_format_i18n( isset( $counts['filter_completed'] ) ? (int) $counts['filter_completed'] : (int) $counts['flag_completed'] ) ); ?></span>
+			<span class="wpcable-kpi__meta"><?php esc_html_e( 'state OR local flag = completed — same SQL as the Completed button', 'wpcable' ); ?></span>
 		</div>
 		<div class="wpcable-kpi">
-			<span class="wpcable-kpi__label"><?php esc_html_e( 'Lost (local)', 'wpcable' ); ?></span>
-			<span class="wpcable-kpi__value"><?php echo esc_html( number_format_i18n( (int) $counts['flag_lost'] ) ); ?></span>
-			<span class="wpcable-kpi__meta"><?php esc_html_e( 'Heuristic — not proof nobody else was hired', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__label"><?php esc_html_e( 'Lost (filter)', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__value" data-kpi="lost"><?php echo esc_html( number_format_i18n( isset( $counts['filter_lost'] ) ? (int) $counts['filter_lost'] : (int) $counts['flag_lost'] ) ); ?></span>
+			<span class="wpcable-kpi__meta"><?php esc_html_e( 'state OR local flag = lost. Heuristic, not hire proof. Refresh may rewrite flags; page views do not.', 'wpcable' ); ?></span>
 		</div>
 		<div class="wpcable-kpi <?php echo $financial_ok ? '' : 'wpcable-kpi--unavailable'; ?>">
 			<span class="wpcable-kpi__label"><?php esc_html_e( 'Transactions', 'wpcable' ); ?></span>
@@ -60,14 +60,14 @@ $financial_ok      = $tx_count > 0;
 
 	<div class="wpcable-toolbar">
 		<div class="wpcable-filters" role="group" aria-label="<?php esc_attr_e( 'Status filters', 'wpcable' ); ?>">
-			<button type="button" class="button button-primary wpcable-filter is-active" data-state="all"><?php esc_html_e( 'All', 'wpcable' ); ?></button>
-			<button type="button" class="button wpcable-filter" data-state="published"><?php esc_html_e( 'Published', 'wpcable' ); ?></button>
-			<button type="button" class="button wpcable-filter" data-completed="1"><?php esc_html_e( 'Completed', 'wpcable' ); ?></button>
-			<button type="button" class="button wpcable-filter" data-paid="1"><?php esc_html_e( 'Paid', 'wpcable' ); ?></button>
-			<button type="button" class="button wpcable-filter" data-estimated="1"><?php esc_html_e( 'Estimated', 'wpcable' ); ?></button>
-			<button type="button" class="button wpcable-filter" data-lost="1"><?php esc_html_e( 'Lost', 'wpcable' ); ?></button>
-			<button type="button" class="button wpcable-filter" data-preferred="1"><?php esc_html_e( 'Preferred', 'wpcable' ); ?></button>
-			<button type="button" class="button wpcable-filter" data-has_notes="1"><?php esc_html_e( 'Has notes', 'wpcable' ); ?></button>
+			<button type="button" class="button button-primary wpcable-filter is-active" data-state="all" data-filter-key="all"><?php esc_html_e( 'All', 'wpcable' ); ?></button>
+			<button type="button" class="button wpcable-filter" data-state="published" data-filter-key="published"><?php esc_html_e( 'Published', 'wpcable' ); ?></button>
+			<button type="button" class="button wpcable-filter" data-completed="1" data-filter-key="completed"><?php esc_html_e( 'Completed', 'wpcable' ); ?></button>
+			<button type="button" class="button wpcable-filter" data-paid="1" data-filter-key="paid"><?php esc_html_e( 'Paid', 'wpcable' ); ?></button>
+			<button type="button" class="button wpcable-filter" data-estimated="1" data-filter-key="estimated"><?php esc_html_e( 'Estimated', 'wpcable' ); ?></button>
+			<button type="button" class="button wpcable-filter" data-lost="1" data-filter-key="lost"><?php esc_html_e( 'Lost', 'wpcable' ); ?></button>
+			<button type="button" class="button wpcable-filter" data-preferred="1" data-filter-key="preferred"><?php esc_html_e( 'Preferred', 'wpcable' ); ?></button>
+			<button type="button" class="button wpcable-filter" data-has_notes="1" data-filter-key="with_notes"><?php esc_html_e( 'Has notes', 'wpcable' ); ?></button>
 		</div>
 		<div class="wpcable-toolbar__right">
 			<label class="wpcable-check">
@@ -89,7 +89,10 @@ $financial_ok      = $tx_count > 0;
 		</div>
 	</div>
 	<p class="description wpcable-lost-note">
-		<?php esc_html_e( 'Lost uses the local flag from hidden, canceled, stale, or private-workroom heuristics. It is not global hire proof.', 'wpcable' ); ?>
+		<?php esc_html_e( 'KPI cards use the same SQL as the matching filter button. State and local flag are different columns; a row can be state=published and flag=lost. Lost is a local heuristic (hidden / canceled / stale / private workroom), not proof another expert was hired. Click Refresh to run a read-only Codeable GET queue; ordinary page views do not start one and do not rewrite flags.', 'wpcable' ); ?>
+	</p>
+	<p class="wpcable-sync-banner" id="wpcable-sync-banner" hidden>
+		<?php esc_html_e( 'A read-only Refresh is in progress. Filter counts can change as pages import. This banner is source state, not a completed import.', 'wpcable' ); ?>
 	</p>
 
 	<div class="wpcable-workspace-layout">

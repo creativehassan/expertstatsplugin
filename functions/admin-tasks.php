@@ -115,6 +115,7 @@ function wpcable_ajax_get_task() {
 			'client'        => $client,
 			'suggestions'   => $cues,
 			'unsupported'   => wpcable_opportunities::unsupported_signals(),
+			'history'       => wpcable_task_history_unavailable( $task ),
 			'read_only_api' => true,
 		)
 	);

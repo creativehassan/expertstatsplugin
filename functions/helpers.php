@@ -40,40 +40,109 @@ function wpcable_compare_values( $from = 0, $to = 0 ) {
 }
 
 /**
+ * Signed 32-bit max / Y2K38 sentinel (19 Jan 2038 03:14:07 UTC).
+ * Stored last_activity values at this bound render as "Jan 19 2038" and
+ * produce negative ages such as "-4092d ago" if treated as real activity.
+ */
+function wpcable_int32_sentinel() {
+	return 2147483647;
+}
+
+/**
+ * Earliest unix time treated as a plausible Codeable activity (2008-01-01 UTC).
+ *
+ * @return int
+ */
+function wpcable_min_activity_timestamp() {
+	return 1199145600;
+}
+
+/**
+ * Normalize a value to a usable activity unix timestamp.
+ * Rejects empty, epoch, pre-Codeable years, Y2K38/INT32_MAX sentinels,
+ * year >= 2038, and timestamps more than one day in the future.
+ *
+ * @param mixed $value Datetime string or unix timestamp.
+ * @return int Valid unix time, or 0 when unusable.
+ */
+function wpcable_normalize_timestamp( $value ) {
+	if ( '' === $value || null === $value || false === $value ) {
+		return 0;
+	}
+
+	if ( is_string( $value ) ) {
+		if ( '0000-00-00 00:00:00' === $value || '0000-00-00' === $value ) {
+			return 0;
+		}
+		if ( is_numeric( $value ) ) {
+			$time = (int) $value;
+		} else {
+			$parsed = strtotime( $value );
+			$time   = false === $parsed ? 0 : (int) $parsed;
+		}
+	} elseif ( is_numeric( $value ) ) {
+		$time = (int) $value;
+	} else {
+		return 0;
+	}
+
+	if ( $time <= 0 ) {
+		return 0;
+	}
+
+	if ( $time >= wpcable_int32_sentinel() ) {
+		return 0;
+	}
+
+	$year = (int) gmdate( 'Y', $time );
+	if ( $year < 2008 || $year >= 2038 ) {
+		return 0;
+	}
+
+	if ( $time > ( time() + DAY_IN_SECONDS ) ) {
+		return 0;
+	}
+
+	if ( $time < wpcable_min_activity_timestamp() ) {
+		return 0;
+	}
+
+	return $time;
+}
+
+/**
  * Format a date/time from a unix timestamp or datetime string.
- * Empty, zero, and Unix-epoch values are treated as missing — never "1970".
+ * Empty, zero, epoch, future, and Y2K38 sentinel values stay blank —
+ * never "1970" and never "19 Jan 2038".
  *
  * @param mixed $value Datetime string or unix timestamp.
  * @return string
  */
 function wpcable_date( $value ) {
-	if ( '' === $value || null === $value || false === $value ) {
-		return '';
-	}
-
-	if ( is_string( $value ) ) {
-		if ( '0000-00-00 00:00:00' === $value || '0000-00-00' === $value ) {
-			return '';
-		}
-		$time = strtotime( $value );
-	} elseif ( is_numeric( $value ) ) {
-		$time = (int) $value;
-	} else {
-		return '';
-	}
-
-	if ( ! $time || $time <= 0 ) {
-		return '';
-	}
-
-	// Guard against epoch leakage (strtotime(false) / empty dateadded).
-	$year = (int) gmdate( 'Y', $time );
-	if ( $year < 2008 ) {
+	$time = wpcable_normalize_timestamp( $value );
+	if ( ! $time ) {
 		return '';
 	}
 
 	$format_string = get_option( 'date_format' ) . ' (' . get_option( 'time_format' ) . ')';
 	return date_i18n( $format_string, $time );
+}
+
+/**
+ * Whole days since a usable activity timestamp, or null when the source is invalid.
+ * Invalid/future/sentinel values must not become negative ages or "0 days ago".
+ *
+ * @param mixed $value Datetime string or unix timestamp.
+ * @return int|null
+ */
+function wpcable_stale_days( $value ) {
+	$time = wpcable_normalize_timestamp( $value );
+	if ( ! $time ) {
+		return null;
+	}
+
+	$days = (int) floor( ( time() - $time ) / DAY_IN_SECONDS );
+	return max( 0, $days );
 }
 
 /**
@@ -427,35 +496,96 @@ function codeable_flush_all_data() {
 }
 
 /**
- * Checks, whether we should (auto) refresh the stats/pull data from API.
+ * Pending Codeable GET queue, or an empty array.
  *
- * @param bool $force Force a queue rebuild.
+ * @return array
+ */
+function wpcable_sync_queue() {
+	$queue = get_option( 'wpcable_api_queue' );
+	return is_array( $queue ) ? $queue : array();
+}
+
+/**
+ * Whether a Refresh queue is still pending (interrupted or in flight).
+ *
+ * @return bool
+ */
+function wpcable_sync_is_running() {
+	return ! empty( wpcable_sync_queue() );
+}
+
+/**
+ * Head of the pending queue, or null.
+ *
+ * @return array|null
+ */
+function wpcable_sync_current_step() {
+	$queue = wpcable_sync_queue();
+	if ( empty( $queue ) ) {
+		return null;
+	}
+	$head = reset( $queue );
+	return is_array( $head ) ? $head : null;
+}
+
+/**
+ * Acquire a short-lived sync lock so two admin tabs cannot process the same
+ * queue item (including mark_tasks_lost) at once.
+ *
+ * @param int $ttl Seconds the lock is valid.
+ * @return bool True when this caller owns the lock.
+ */
+function wpcable_sync_lock_acquire( $ttl = 45 ) {
+	$now  = time();
+	$lock = get_option( 'wpcable_sync_lock', false );
+	if ( is_array( $lock ) && ! empty( $lock['until'] ) && (int) $lock['until'] > $now ) {
+		return false;
+	}
+
+	update_option(
+		'wpcable_sync_lock',
+		array(
+			'until'   => $now + max( 5, (int) $ttl ),
+			'started' => $now,
+		)
+	);
+
+	return true;
+}
+
+/**
+ * Release the sync lock.
+ *
+ * @return void
+ */
+function wpcable_sync_lock_release() {
+	delete_option( 'wpcable_sync_lock' );
+}
+
+/**
+ * Whether another request currently holds the sync lock.
+ *
+ * @return bool
+ */
+function wpcable_sync_lock_held() {
+	$lock = get_option( 'wpcable_sync_lock', false );
+	return is_array( $lock ) && ! empty( $lock['until'] ) && (int) $lock['until'] > time();
+}
+
+/**
+ * 0.4.1: Ordinary page views and WP-Cron must not enqueue a new Codeable GET
+ * queue. The first queue step is still `task:lost` → mark_tasks_lost(), which
+ * rewrites published/estimated/hired rows. Navigation used to race KPI counts.
+ *
+ * New queue work starts only from explicit Refresh (`wpcable_sync_start`).
+ * An already-pending queue is left in place so an interrupted Refresh can resume.
+ * `$force` is kept for signature compatibility and does not enqueue.
+ *
+ * @param bool $force Unused. Explicit Refresh is wpcable_sync_start.
  * @return void
  */
 function codeable_maybe_refresh_data( $force = false ) {
-	$sync_now = $force;
-
-	if ( ! $sync_now ) {
-		$last_fetch = (int) get_option( 'wpcable_last_fetch' );
-
-		if ( ! $last_fetch ) {
-			$sync_now = true;
-		} else {
-			$sync_now = time() - $last_fetch > HOUR_IN_SECONDS;
-		}
-	}
-
-	if ( ! $sync_now ) {
-		return;
-	}
-
-	$queue = get_option( 'wpcable_api_queue' );
-	$data  = new wpcable_api_data();
-
-	if ( empty( $queue ) || ! is_array( $queue ) ) {
-		$queue = $data->prepare_queue();
-		update_option( 'wpcable_api_queue', $queue );
-	}
+	unset( $force );
 }
 
 /**
@@ -464,13 +594,40 @@ function codeable_maybe_refresh_data( $force = false ) {
  * @return void
  */
 function codeable_last_fetch_info() {
-	$health     = wpcable_import_health::get();
+	$tasks      = new wpcable_tasks();
+	$stats      = new wpcable_stats();
+	$account    = wpcable_get_account_details();
+	$counts     = $tasks->get_state_counts();
+	$queue      = wpcable_sync_queue();
+	$health     = wpcable_import_health::snapshot_from_counts(
+		$counts['imported'],
+		$stats->get_transaction_count(),
+		! empty( $account['id'] ),
+		$queue
+	);
 	$last_fetch = get_option( 'wpcable_last_fetch' );
 	$queue_date = wpcable_date( $last_fetch );
+	$running    = ! empty( $queue );
+	$step       = wpcable_sync_current_step();
+	$nonce      = wp_create_nonce( 'wpcable-sync' );
 
 	?>
 	<div class="codeable-last-refresh wpcable-import-health">
 		<strong><?php esc_html_e( 'Import health (per source)', 'wpcable' ); ?></strong>
+		<?php if ( $running ) : ?>
+			<p class="wpcable-sync-banner">
+				<?php
+				$label = isset( $step['label'] ) ? $step['label'] : __( 'Codeable GET refresh', 'wpcable' );
+				$page  = isset( $step['page'] ) ? (int) $step['page'] : 0;
+				printf(
+					/* translators: 1: current step label, 2: page number or em dash */
+					esc_html__( 'Refresh in progress: %1$s (page %2$s). Counts can change until this queue finishes. Page navigation does not start a new queue.', 'wpcable' ),
+					esc_html( $label ),
+					esc_html( $page ? (string) $page : '—' )
+				);
+				?>
+			</p>
+		<?php endif; ?>
 		<ul class="wpcable-import-health-list">
 			<?php foreach ( wpcable_import_health::sources() as $source_key => $source_label ) : ?>
 				<?php $row = isset( $health[ $source_key ] ) ? $health[ $source_key ] : array(); ?>
@@ -491,15 +648,15 @@ function codeable_last_fetch_info() {
 				<?php
 				printf(
 					/* translators: %s: formatted datetime */
-					esc_html__( 'Last full refresh queue finished: %s. That is the queue clock, not proof every source succeeded.', 'wpcable' ),
+					esc_html__( 'Last full refresh queue finished: %s. That is the queue clock, not proof every source succeeded, and not MAX(last_activity) / MAX(last_sync).', 'wpcable' ),
 					esc_html( $queue_date )
 				);
 				?>
 			<?php else : ?>
-				<?php esc_html_e( 'No completed refresh queue is stored. Timestamps are shown only when that source actually succeeded.', 'wpcable' ); ?>
+				<?php esc_html_e( 'No completed refresh queue is stored. Per-source timestamps appear only after an instrumented attempt recorded success — never from cached row dates.', 'wpcable' ); ?>
 			<?php endif; ?>
 			<span class="tooltip" tabindex="0">
-				<span class="tooltip-text"><?php esc_html_e( 'The plugin loads data from Codeable once per hour, or when you click Refresh. Access is read-only. A missing transactions import is not the same as $0 revenue.', 'wpcable' ); ?></span>
+				<span class="tooltip-text"><?php esc_html_e( 'Click Refresh to start a read-only Codeable GET queue. Page views and hourly WP-Cron do not enqueue a new queue (0.4.1). An interrupted Refresh still resumes. Access is read-only. A missing transactions import is not $0 revenue. Cached rows without a recorded attempt are labeled as cached, not as a successful import.', 'wpcable' ); ?></span>
 				<i class="dashicons dashicons-info"></i>
 			</span>
 			|
@@ -508,9 +665,15 @@ function codeable_last_fetch_info() {
 			</a>
 		</p>
 	</div>
-	<div class="codeable-sync-progress" style="display:none">
+	<div class="codeable-sync-progress" style="<?php echo $running ? '' : 'display:none'; ?>" data-nonce="<?php echo esc_attr( $nonce ); ?>" data-resume-pending="1">
 		<span class="spinner is-active"></span>
-		<span class="msg"></span>
+		<span class="msg">
+			<?php
+			if ( $running && isset( $step['label'] ) ) {
+				echo esc_html( $step['label'] );
+			}
+			?>
+		</span>
 	</div>
 	<?php
 }
@@ -637,7 +800,39 @@ function wpcable_workroom_url( $task_id ) {
 		return '';
 	}
 
-	return 'https://app.codeable.io/tasks/' . $task_id;
+	// Pattern already used on the Stats clients table in this plugin
+	// (functions/admin-page.php). Read-only browser link, not an API write.
+	return 'https://app.codeable.io/tasks/' . $task_id . '/workroom';
+}
+
+/**
+ * Honest project-history payload. Description and comments are not stored
+ * locally and have no official public API contract in this plugin.
+ *
+ * @param array $task Sanitized task.
+ * @return array
+ */
+function wpcable_task_history_unavailable( $task = array() ) {
+	$task_id = isset( $task['task_id'] ) ? (int) $task['task_id'] : 0;
+
+	return array(
+		'description' => array(
+			'available' => false,
+			'label'     => __( 'Project description', 'wpcable' ),
+			'reason'    => __( 'Unavailable in this plugin. Local codeable_tasks stores title, state, flags, prices, last_activity, and local notes — not the full project body. No official public Codeable API contract for description was found, so this plugin does not import or invent one.', 'wpcable' ),
+		),
+		'comments'    => array(
+			'available' => false,
+			'label'     => __( 'Workroom comments', 'wpcable' ),
+			'reason'    => __( 'Not imported — this is not an empty comment history. There is no comments column and no documented comments endpoint used by this plugin. Local notes are WordPress-only and are not Codeable comments. Open the workroom in Codeable to read the live thread.', 'wpcable' ),
+		),
+		'workroom'    => array(
+			'url'     => $task_id ? wpcable_workroom_url( $task_id ) : '',
+			'pattern' => 'https://app.codeable.io/tasks/{id}/workroom',
+			'label'   => __( 'Open workroom (read-only)', 'wpcable' ),
+		),
+		'complete'    => false,
+	);
 }
 
 /**

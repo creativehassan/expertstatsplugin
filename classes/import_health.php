@@ -57,7 +57,7 @@ class wpcable_import_health {
 	 * @return array
 	 */
 	public static function normalize_row( $row ) {
-		$allowed = array( 'never', 'attempted', 'success', 'failed', 'missing', 'empty' );
+		$allowed = array( 'never', 'cached', 'in_progress', 'attempted', 'success', 'failed', 'missing', 'empty' );
 		$status  = isset( $row['status'] ) ? $row['status'] : 'never';
 		if ( ! in_array( $status, $allowed, true ) ) {
 			$status = 'never';
@@ -133,12 +133,14 @@ class wpcable_import_health {
 		$status = $row['status'];
 
 		$labels = array(
-			'never'     => __( 'Never attempted', 'wpcable' ),
-			'attempted' => __( 'Attempted — result unknown', 'wpcable' ),
-			'success'   => __( 'Imported', 'wpcable' ),
-			'failed'    => __( 'Failed', 'wpcable' ),
-			'missing'   => __( 'Unavailable', 'wpcable' ),
-			'empty'     => __( 'Reached API, no rows', 'wpcable' ),
+			'never'       => __( 'No recorded attempt', 'wpcable' ),
+			'cached'      => __( 'Cached locally — no recorded attempt', 'wpcable' ),
+			'in_progress' => __( 'Refresh in progress', 'wpcable' ),
+			'attempted'   => __( 'Attempted — result unknown', 'wpcable' ),
+			'success'     => __( 'Imported', 'wpcable' ),
+			'failed'      => __( 'Failed', 'wpcable' ),
+			'missing'     => __( 'Unavailable', 'wpcable' ),
+			'empty'       => __( 'Reached API, no rows', 'wpcable' ),
 		);
 
 		$label = isset( $labels[ $status ] ) ? $labels[ $status ] : $status;
@@ -157,7 +159,7 @@ class wpcable_import_health {
 	 */
 	public static function success_time_label( $row ) {
 		$row = self::normalize_row( $row );
-		if ( $row['succeeded_at'] <= 0 ) {
+		if ( 'success' !== $row['status'] || $row['succeeded_at'] <= 0 ) {
 			return '';
 		}
 
@@ -189,47 +191,118 @@ class wpcable_import_health {
 	}
 
 	/**
-	 * Derive a display snapshot from local tables when option is empty.
-	 * Does not invent success times.
+	 * Display snapshot. Never invents succeeded_at from last_fetch, MAX(last_sync),
+	 * or MAX(last_activity). Cached rows without an instrumented attempt stay
+	 * "cached" / "no recorded attempt", not "Imported".
 	 *
-	 * @param int $task_count         Local task rows.
-	 * @param int $transaction_count  Local transaction rows.
-	 * @param int $profile_present    1 if profile option is an array with an id.
+	 * @param int   $task_count         Local task rows.
+	 * @param int   $transaction_count  Local transaction rows.
+	 * @param int   $profile_present    1 if profile option is an array with an id.
+	 * @param array $queue              Optional pending API queue.
 	 * @return array
 	 */
-	public static function snapshot_from_counts( $task_count, $transaction_count, $profile_present ) {
+	public static function snapshot_from_counts( $task_count, $transaction_count, $profile_present, $queue = null ) {
 		$health = self::get();
-
-		if ( 'never' === $health['tasks']['status'] && $task_count > 0 ) {
-			$health['tasks']['status'] = 'success';
-			$health['tasks']['rows']   = (int) $task_count;
-			$health['tasks']['message'] = sprintf(
-				/* translators: %d: row count */
-				__( '%d local rows (no recorded attempt timestamp)', 'wpcable' ),
-				(int) $task_count
-			);
+		if ( null === $queue ) {
+			$queue = get_option( 'wpcable_api_queue' );
 		}
+		$queue           = is_array( $queue ) ? $queue : array();
+		$pending_sources = self::sources_in_queue( $queue );
 
-		if ( 'never' === $health['transactions']['status'] ) {
-			if ( $transaction_count > 0 ) {
-				$health['transactions']['status']  = 'success';
-				$health['transactions']['rows']    = (int) $transaction_count;
-				$health['transactions']['message'] = sprintf(
-					/* translators: %d: row count */
-					__( '%d local rows (no recorded attempt timestamp)', 'wpcable' ),
-					(int) $transaction_count
-				);
-			} else {
-				$health['transactions']['status']  = 'missing';
-				$health['transactions']['message'] = __( 'No local transaction rows. Not $0 revenue.', 'wpcable' );
+		foreach ( array_keys( self::sources() ) as $key ) {
+			$row = $health[ $key ];
+
+			if ( in_array( $key, $pending_sources, true ) ) {
+				$step          = isset( $queue[0] ) && is_array( $queue[0] ) ? $queue[0] : array();
+				$label         = isset( $step['label'] ) ? $step['label'] : '';
+				$page          = isset( $step['page'] ) ? (int) $step['page'] : 0;
+				$row['status'] = 'in_progress';
+				$row['message'] = $label
+					? sprintf(
+						/* translators: 1: step label, 2: optional page suffix */
+						__( 'Refresh in progress (%1$s%2$s). Counts may change until it finishes.', 'wpcable' ),
+						$label,
+						$page ? ', page ' . $page : ''
+					)
+					: __( 'Refresh in progress. Counts may change until it finishes.', 'wpcable' );
+				$health[ $key ] = self::normalize_row( $row );
+				continue;
 			}
-		}
 
-		if ( 'never' === $health['profile']['status'] && $profile_present ) {
-			$health['profile']['status']  = 'success';
-			$health['profile']['message'] = __( 'Profile option present (no recorded attempt timestamp)', 'wpcable' );
+			$instrumented = ( $row['attempted_at'] > 0 || $row['succeeded_at'] > 0 || 'never' !== $row['status'] );
+			if ( $instrumented ) {
+				continue;
+			}
+
+			if ( 'profile' === $key ) {
+				if ( $profile_present ) {
+					$row['status']  = 'cached';
+					$row['message'] = __( 'Cached locally — no recorded attempt. This is not an instrumented import success.', 'wpcable' );
+				} else {
+					$row['status']  = 'never';
+					$row['message'] = __( 'No recorded attempt and no cached profile.', 'wpcable' );
+				}
+			} elseif ( 'tasks' === $key ) {
+				if ( $task_count > 0 ) {
+					$row['status']  = 'cached';
+					$row['rows']    = (int) $task_count;
+					$row['message'] = sprintf(
+						/* translators: %d: row count */
+						__( '%d local rows — no recorded attempt. Cached imports are not the same as an instrumented Refresh.', 'wpcable' ),
+						(int) $task_count
+					);
+				} else {
+					$row['status']  = 'never';
+					$row['message'] = __( 'No recorded attempt and no local task rows.', 'wpcable' );
+				}
+			} elseif ( 'transactions' === $key ) {
+				if ( $transaction_count > 0 ) {
+					$row['status']  = 'cached';
+					$row['rows']    = (int) $transaction_count;
+					$row['message'] = sprintf(
+						/* translators: %d: row count */
+						__( '%d local rows — no recorded attempt.', 'wpcable' ),
+						(int) $transaction_count
+					);
+				} else {
+					$row['status']  = 'never';
+					$row['message'] = __( 'No recorded attempt and no local rows. Missing is not $0 revenue.', 'wpcable' );
+				}
+			}
+
+			$row['succeeded_at'] = 0;
+			$health[ $key ]      = self::normalize_row( $row );
 		}
 
 		return $health;
+	}
+
+	/**
+	 * Map pending queue steps to health source keys.
+	 *
+	 * @param array $queue Queue items.
+	 * @return array
+	 */
+	public static function sources_in_queue( $queue ) {
+		$out = array();
+		if ( ! is_array( $queue ) ) {
+			return $out;
+		}
+
+		foreach ( $queue as $step ) {
+			if ( ! is_array( $step ) || empty( $step['task'] ) ) {
+				continue;
+			}
+			$task = (string) $step['task'];
+			if ( 'profile' === $task ) {
+				$out[] = 'profile';
+			} elseif ( 'transactions' === $task ) {
+				$out[] = 'transactions';
+			} elseif ( 0 === strpos( $task, 'task' ) ) {
+				$out[] = 'tasks';
+			}
+		}
+
+		return array_values( array_unique( $out ) );
 	}
 }

@@ -32,7 +32,75 @@
 		if (!url) {
 			return '';
 		}
-		return '<img src="' + esc(url) + '" alt="" />';
+		return '<img class="wpcable-avatar" src="' + esc(url) + '" alt="" width="32" height="32" />';
+	}
+
+	function ageLabel(days, valid) {
+		if (valid === false || days === null || days === undefined || days === '' || days < 0) {
+			return '—';
+		}
+		return days + 'd ago';
+	}
+
+	function applyCounts(data) {
+		var filters = data.filter_counts || {};
+		var counts = data.counts || {};
+		function setKpi(key, value) {
+			var $el = $root.find('[data-kpi="' + key + '"]');
+			if ($el.length && value !== undefined && value !== null) {
+				$el.text(String(value));
+			}
+		}
+		if (filters.all !== undefined) {
+			setKpi('imported', filters.all);
+		} else if (counts.imported !== undefined) {
+			setKpi('imported', counts.imported);
+		}
+		setKpi('published', filters.published);
+		setKpi('completed', filters.completed);
+		setKpi('lost', filters.lost);
+		$root.find('.wpcable-filter[data-filter-key]').each(function () {
+			var key = jQuery(this).data('filter-key');
+			var n = filters[key];
+			var $count = jQuery(this).find('.wpcable-filter-count');
+			if (n === undefined) {
+				return;
+			}
+			if (!$count.length) {
+				jQuery(this).append(' <span class="wpcable-filter-count"></span>');
+				$count = jQuery(this).find('.wpcable-filter-count');
+			}
+			$count.text('(' + n + ')');
+		});
+		if (data.sync && data.sync.running) {
+			jQuery('#wpcable-sync-banner').prop('hidden', false);
+		}
+	}
+
+	function historyPanels(history, workroomUrl) {
+		history = history || {};
+		var desc = history.description || {};
+		var comments = history.comments || {};
+		var workroom = history.workroom || {};
+		var url = workroom.url || workroomUrl || '';
+		var html = '<section class="wpcable-history-panel">';
+		html += '<h3>' + esc(desc.label || 'Project description') + '</h3>';
+		html += '<p>' + esc(desc.reason || cfg.i18n.historyUnavailable) + '</p>';
+		html += '</section>';
+		html += '<section class="wpcable-history-panel">';
+		html += '<h3>' + esc(comments.label || 'Workroom comments') + '</h3>';
+		html += '<p>' + esc(comments.reason || cfg.i18n.commentsUnavailable) + '</p>';
+		if (url) {
+			html +=
+				'<p><a class="button" href="' +
+				esc(url) +
+				'" target="_blank" rel="noopener">' +
+				esc(workroom.label || 'Open workroom (read-only)') +
+				'</a></p>';
+		}
+		html += '<p class="description">' + esc(cfg.i18n.notesNotComments) + '</p>';
+		html += '</section>';
+		return html;
 	}
 
 	function pagination(el, page, perPage, total, onPage) {
@@ -190,6 +258,7 @@
 		}
 
 		function renderRows(data) {
+			applyCounts(data);
 			var items = data.items || [];
 			var $tbody = $('#wpcable-task-rows');
 			$tbody.empty();
@@ -219,7 +288,7 @@
 							esc(task.client_name) +
 							'</span></td>' +
 							'<td>' +
-							esc(task.last_activity_date || '—') +
+							esc(task.activity_valid ? (task.last_activity_date || '—') : '—') +
 							'</td>' +
 							'<td><a href="' +
 							esc(task.workroom_url) +
@@ -289,16 +358,11 @@
 					':</strong> ' +
 					esc(task.last_activity_by || '—') +
 					' · ' +
-					esc(task.last_activity_date || '—') +
+					esc(task.activity_valid ? (task.last_activity_date || '—') : '—') +
 					'</p>';
+				html += historyPanels(res.data.history || task.history, task.workroom_url);
 				html +=
-					'<p><a class="button" href="' +
-					esc(task.workroom_url) +
-					'" target="_blank" rel="noopener">' +
-					esc('Open workroom (read-only)') +
-					'</a> ';
-				html +=
-					'<button type="button" class="button wpcable-edit-notes">' +
+					'<p><button type="button" class="button wpcable-edit-notes">' +
 					esc('Edit local notes') +
 					'</button></p>';
 				html += '<p class="description">' + esc(cfg.i18n.notesLocal) + '</p>';
@@ -477,20 +541,20 @@
 				var row = $(
 					'<tr class="wpcable-row-link" data-client-id="' +
 						esc(client.client_id) +
-						'"><td>' +
+						'"><td class="wpcable-client-cell">' +
 						avatar(client.avatar) +
-						' ' +
+						'<span>' +
 						esc(client.full_name) +
 						'<div class="description">' +
 						esc(client.role || '') +
 						' · ' +
 						esc(client.client_id) +
-						'</div></td><td>' +
+						'</div></span></td><td>' +
 						esc(client.task_stats ? client.task_stats.total : 0) +
 						'</td><td>' +
 						esc(flags.join(' · ') || '—') +
 						'</td><td>' +
-						esc(client.stale_days ? client.stale_days + 'd ago' : '—') +
+						esc(ageLabel(client.stale_days, client.activity_valid)) +
 						'</td></tr>'
 				);
 				$tbody.append(row);
