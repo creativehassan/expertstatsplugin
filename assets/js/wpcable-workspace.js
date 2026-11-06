@@ -42,11 +42,44 @@
 		return days + 'd ago';
 	}
 
-	function applyCounts(data) {
-		var filters = data.filter_counts || {};
-		var counts = data.counts || {};
+	function unwrapWpAjax(res) {
+		if (typeof res === 'string') {
+			try {
+				res = JSON.parse(res);
+			} catch (e) {
+				return { ok: false, message: 'invalid_json' };
+			}
+		}
+		if (!res || typeof res !== 'object') {
+			return { ok: false, message: 'empty' };
+		}
+		if (res.success === true || res.success === 'true' || res.success === 1) {
+			return { ok: true, data: res.data };
+		}
+		if (res.success === false || res.success === 'false' || res.success === 0) {
+			return {
+				ok: false,
+				message: (res.data && res.data.message) ? res.data.message : 'request_failed',
+				data: res.data
+			};
+		}
+		if (res.items || res.task || res.total !== undefined) {
+			return { ok: true, data: res };
+		}
+		if (res.data && (res.data.items || res.data.task || res.data.total !== undefined)) {
+			return { ok: true, data: res.data };
+		}
+		return { ok: false, message: 'unexpected_shape' };
+	}
+
+	function applyCounts(data, $scope) {
+		if (!$scope || !$scope.length) {
+			$scope = $('.wpcable-workspace');
+		}
+		var filters = (data && data.filter_counts) || {};
+		var counts = (data && data.counts) || {};
 		function setKpi(key, value) {
-			var $el = $root.find('[data-kpi="' + key + '"]');
+			var $el = $scope.find('[data-kpi="' + key + '"]');
 			if ($el.length && value !== undefined && value !== null) {
 				$el.text(String(value));
 			}
@@ -59,7 +92,7 @@
 		setKpi('published', filters.published);
 		setKpi('completed', filters.completed);
 		setKpi('lost', filters.lost);
-		$root.find('.wpcable-filter[data-filter-key]').each(function () {
+		$scope.find('.wpcable-filter[data-filter-key]').each(function () {
 			var key = jQuery(this).data('filter-key');
 			var n = filters[key];
 			var $count = jQuery(this).find('.wpcable-filter-count');
@@ -72,8 +105,8 @@
 			}
 			$count.text('(' + n + ')');
 		});
-		if (data.sync && data.sync.running) {
-			jQuery('#wpcable-sync-banner').prop('hidden', false);
+		if (data && data.sync && data.sync.running) {
+			$scope.find('#wpcable-sync-banner').prop('hidden', false);
 		}
 	}
 
@@ -245,22 +278,69 @@
 			};
 		}
 
+		function tableBody() {
+			var $tbody = $root.find('#wpcable-task-rows');
+			return $tbody.length ? $tbody : $('#wpcable-task-rows');
+		}
+
+		function showTableMessage(msg, isError) {
+			tableBody().html(
+				'<tr class="wpcable-empty-row' +
+					(isError ? ' wpcable-error-row' : '') +
+					'"><td colspan="7">' +
+					esc(msg) +
+					'</td></tr>'
+			);
+		}
+
 		function load() {
-			var $tbody = $('#wpcable-task-rows');
-			$tbody.html('<tr class="wpcable-empty-row"><td colspan="7">' + esc(cfg.i18n.loading) + '</td></tr>');
-			ajax('wpcable_query_tasks', params()).done(function (res) {
-				if (!res || !res.success) {
-					$tbody.html('<tr class="wpcable-empty-row"><td colspan="7">' + esc(cfg.i18n.noTasks) + '</td></tr>');
-					return;
-				}
-				renderRows(res.data);
-			});
+			showTableMessage(cfg.i18n.loading || 'Loading…', false);
+			ajax('wpcable_query_tasks', params())
+				.done(function (res) {
+					var parsed = unwrapWpAjax(res);
+					if (!parsed.ok || !parsed.data) {
+						showTableMessage(
+							(cfg.i18n.noTasks || 'No matching projects') +
+								' (' +
+								esc(parsed.message || 'error') +
+								')',
+							true
+						);
+						return;
+					}
+					try {
+						renderRows(parsed.data);
+					} catch (err) {
+						showTableMessage(
+							(cfg.i18n.unavailable || 'Unavailable') +
+								': ' +
+								(err && err.message ? err.message : String(err)),
+							true
+						);
+					}
+				})
+				.fail(function (xhr, status) {
+					showTableMessage(
+						(cfg.i18n.unavailable || 'Unavailable') +
+							' (' +
+							esc(status || 'ajax') +
+							')',
+						true
+					);
+				});
 		}
 
 		function renderRows(data) {
-			applyCounts(data);
-			var items = data.items || [];
-			var $tbody = $('#wpcable-task-rows');
+			try {
+				applyCounts(data, $root);
+			} catch (err) {
+				if (window.console && console.warn) {
+					console.warn('wpcable applyCounts', err);
+				}
+			}
+			data = data || {};
+			var items = Array.isArray(data.items) ? data.items : [];
+			var $tbody = tableBody();
 			$tbody.empty();
 			if (!items.length) {
 				$tbody.html('<tr class="wpcable-empty-row"><td colspan="7">' + esc(cfg.i18n.noTasks) + '</td></tr>');
@@ -318,7 +398,11 @@
 					$tbody.append(row);
 				});
 			}
-			pagination($('#wpcable-task-pagination'), data.page, data.per_page, data.total, function (p) {
+			var $pager = $root.find('#wpcable-task-pagination');
+			if (!$pager.length) {
+				$pager = $('#wpcable-task-pagination');
+			}
+			pagination($pager, data.page, data.per_page, data.total, function (p) {
 				state.page = p;
 				load();
 			});
@@ -332,11 +416,12 @@
 			$layout.addClass('wpcable-drawer-open');
 			$body.html('<p>' + esc(cfg.i18n.loading) + '</p>');
 			ajax('wpcable_get_task', { task_id: taskId }).done(function (res) {
-				if (!res || !res.success) {
+				var parsed = unwrapWpAjax(res);
+				if (!parsed.ok || !parsed.data || !parsed.data.task) {
 					$body.html('<p>' + esc(cfg.i18n.unavailable) + '</p>');
 					return;
 				}
-				var task = res.data.task;
+				var task = parsed.data.task;
 				currentTask = task;
 				var html = '<h2>#' + esc(task.task_id) + ' · ' + esc(task.title) + '</h2>';
 				html += '<p>' + esc(task.client_name) + ' · client_id ' + esc(task.client_id) + '</p>';
@@ -360,7 +445,7 @@
 					' · ' +
 					esc(task.activity_valid ? (task.last_activity_date || '—') : '—') +
 					'</p>';
-				html += historyPanels(res.data.history || task.history, task.workroom_url);
+				html += historyPanels(parsed.data.history || task.history, task.workroom_url);
 				html +=
 					'<p><button type="button" class="button wpcable-edit-notes">' +
 					esc('Edit local notes') +
@@ -369,8 +454,8 @@
 				if (task.notes) {
 					html += '<pre class="wpcable-notes-full">' + esc(task.notes) + '</pre>';
 				}
-				html += '<h3>' + esc('Suggested next step') + '</h3>' + renderSuggestions(res.data.suggestions);
-				html += renderUnsupported(res.data.unsupported);
+				html += '<h3>' + esc('Suggested next step') + '</h3>' + renderSuggestions(parsed.data.suggestions);
+				html += renderUnsupported(parsed.data.unsupported);
 				$body.html(html);
 			});
 		}
@@ -437,8 +522,9 @@
 
 		function openNotes(taskId) {
 			ajax('wpcable_get_task', { task_id: taskId }).done(function (res) {
-				if (res && res.success) {
-					openNotesEditor(res.data.task);
+				var parsed = unwrapWpAjax(res);
+				if (parsed.ok && parsed.data && parsed.data.task) {
+					openNotesEditor(parsed.data.task);
 				}
 			});
 		}
@@ -504,7 +590,11 @@
 		var searchTimer = null;
 
 		function load() {
-			$('#wpcable-client-rows').html(
+			var $tbody = $root.find('#wpcable-client-rows');
+			if (!$tbody.length) {
+				$tbody = $('#wpcable-client-rows');
+			}
+			$tbody.html(
 				'<tr class="wpcable-empty-row"><td colspan="4">' + esc(cfg.i18n.loading) + '</td></tr>'
 			);
 			ajax('wpcable_query_clients', {
@@ -512,12 +602,34 @@
 				per_page: state.per_page,
 				search: state.search,
 				filter: state.filter
-			}).done(function (res) {
-				if (!res || !res.success) {
-					return;
-				}
-				render(res.data);
-			});
+			})
+				.done(function (res) {
+					var parsed = unwrapWpAjax(res);
+					if (!parsed.ok || !parsed.data) {
+						$tbody.html(
+							'<tr class="wpcable-empty-row wpcable-error-row"><td colspan="4">' +
+								esc(cfg.i18n.unavailable || 'Unavailable') +
+								'</td></tr>'
+						);
+						return;
+					}
+					try {
+						render(parsed.data);
+					} catch (err) {
+						$tbody.html(
+							'<tr class="wpcable-empty-row wpcable-error-row"><td colspan="4">' +
+								esc(cfg.i18n.unavailable || 'Unavailable') +
+								'</td></tr>'
+						);
+					}
+				})
+				.fail(function () {
+					$tbody.html(
+						'<tr class="wpcable-empty-row wpcable-error-row"><td colspan="4">' +
+							esc(cfg.i18n.unavailable || 'Unavailable') +
+							'</td></tr>'
+					);
+				});
 		}
 
 		function render(data) {
@@ -569,11 +681,12 @@
 			var $body = $('#wpcable-client-drawer-body');
 			$body.html('<p>' + esc(cfg.i18n.loading) + '</p>');
 			ajax('wpcable_get_client', { client_id: id }).done(function (res) {
-				if (!res || !res.success) {
+				var parsed = unwrapWpAjax(res);
+				if (!parsed.ok || !parsed.data || !parsed.data.client) {
 					$body.html('<p>' + esc(cfg.i18n.unavailable) + '</p>');
 					return;
 				}
-				var client = res.data.client;
+				var client = parsed.data.client;
 				var html = '<h2>' + esc(client.full_name) + '</h2>';
 				html += '<p class="description">client_id ' + esc(client.client_id) + ' · ' + esc(client.role || '') + '</p>';
 				html +=
@@ -612,11 +725,11 @@
 						'</td></tr>';
 				});
 				html += '</tbody></table>';
-				html += '<h3>' + esc('Opportunity cues') + '</h3>' + renderSuggestions(res.data.suggestions);
+				html += '<h3>' + esc('Opportunity cues') + '</h3>' + renderSuggestions(parsed.data.suggestions);
 				html += '<p class="description">' + esc(cfg.i18n.suggested) + '</p>';
 				html += renderEvidence(client.evidence);
-				html += '<h3>' + esc('Outreach draft — review only') + '</h3>' + renderDraft(res.data.draft);
-				html += renderUnsupported(res.data.unsupported);
+				html += '<h3>' + esc('Outreach draft — review only') + '</h3>' + renderDraft(parsed.data.draft);
+				html += renderUnsupported(parsed.data.unsupported);
 				$body.html(html);
 			});
 		}

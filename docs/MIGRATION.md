@@ -1,6 +1,6 @@
-# Migration and rollback — Expert Stats 0.4.1
+# Migration and rollback — Expert Stats 0.4.2
 
-This release stays inside the existing plugin directory and main file (`wp-codeable.php`). It is a patch of 0.4.0, not a separate app.
+This release stays inside the existing plugin directory and main file (`wp-codeable.php`). It is a patch of 0.4.1, not a separate app.
 
 ## What changes in the database
 
@@ -17,11 +17,13 @@ Options that may already exist:
 - Invalid / future / Y2K38 (`2147483647`) `last_activity` values are displayed as missing. Rows are not rewritten.
 - Explicit **Refresh** is the only trigger that prepares a new Codeable GET queue. The first queue step is still preexisting `task:lost` → `mark_tasks_lost()` (local heuristic). Ordinary navigation does not run it.
 - Hourly `wpcable_cronjob` remains registered but no longer enqueues a new queue.
+- Tasks workspace AJAX renderer scopes KPI updates so a valid `wpcable_query_tasks` JSON envelope paints rows (0.4.1 left Loading after `applyCounts` threw).
+- Formatted datetimes use `wp_date` and append the WordPress timezone abbreviation. PHP default timezone is not changed.
 
 ## Install
 
 1. Keep the folder name `expertstatsplugin-master` (or your current plugin directory) so WordPress treats this as an update of the same plugin.
-2. Replace the plugin files with the 0.4.1 ZIP, keeping `wp-codeable.php` as the bootstrap file.
+2. Replace the plugin files with the 0.4.2 ZIP, keeping `wp-codeable.php` as the bootstrap file.
 3. Open **Codeable Stats**. Existing menu slugs stay:
    - `codeable_transcactions_stats` (Stats)
    - `codeable_tasks` (Tasks / projects workspace)
@@ -30,11 +32,11 @@ Options that may already exist:
    - `codeable_clients`
    - `codeable_opportunities`
 
-Hard-refresh the admin assets if the browser still shows 0.4.0 JS (file versions are `0.4.1`).
+Hard-refresh the admin assets if the browser still shows 0.4.1 JS (file versions are `0.4.2`).
 
 ## Rollback
 
-1. Replace the plugin folder with the 0.4.0 ZIP (or earlier).
+1. Replace the plugin folder with the 0.4.1 ZIP (or earlier).
 2. Optionally delete option `wpcable_sync_lock`.
 3. Do **not** truncate tables to roll back — that would delete local notes.
 

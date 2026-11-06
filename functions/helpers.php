@@ -111,9 +111,46 @@ function wpcable_normalize_timestamp( $value ) {
 }
 
 /**
+ * Abbreviation for the WordPress timezone used by wpcable_date().
+ * Unix timestamps are UTC instants; display is WP settings timezone, labeled.
+ *
+ * @return string
+ */
+function wpcable_timezone_label() {
+	if ( function_exists( 'wp_timezone' ) ) {
+		try {
+			$tz  = wp_timezone();
+			$now = new DateTime( 'now', $tz );
+			$abbr = $now->format( 'T' );
+			if ( $abbr ) {
+				return $abbr;
+			}
+			return $tz->getName();
+		} catch ( Exception $e ) {
+			// Fall through to options.
+		}
+	}
+
+	$string = get_option( 'timezone_string' );
+	if ( is_string( $string ) && '' !== $string ) {
+		return $string;
+	}
+
+	$offset = (float) get_option( 'gmt_offset', 0 );
+	if ( abs( $offset ) < 0.01 ) {
+		return 'UTC';
+	}
+
+	$sign = $offset >= 0 ? '+' : '-';
+	return 'UTC' . $sign . (string) abs( $offset );
+}
+
+/**
  * Format a date/time from a unix timestamp or datetime string.
  * Empty, zero, epoch, future, and Y2K38 sentinel values stay blank —
  * never "1970" and never "19 Jan 2038".
+ * Uses WP timezone (wp_date / date_i18n) without changing PHP default TZ.
+ * Appends the zone label so UTC vs PKT is visible.
  *
  * @param mixed $value Datetime string or unix timestamp.
  * @return string
@@ -125,7 +162,17 @@ function wpcable_date( $value ) {
 	}
 
 	$format_string = get_option( 'date_format' ) . ' (' . get_option( 'time_format' ) . ')';
-	return date_i18n( $format_string, $time );
+	if ( function_exists( 'wp_date' ) ) {
+		$formatted = wp_date( $format_string, $time );
+	} else {
+		$formatted = date_i18n( $format_string, $time );
+	}
+
+	if ( ! $formatted ) {
+		return '';
+	}
+
+	return $formatted . ' ' . wpcable_timezone_label();
 }
 
 /**
@@ -648,7 +695,7 @@ function codeable_last_fetch_info() {
 				<?php
 				printf(
 					/* translators: %s: formatted datetime */
-					esc_html__( 'Last full refresh queue finished: %s. That is the queue clock, not proof every source succeeded, and not MAX(last_activity) / MAX(last_sync).', 'wpcable' ),
+					esc_html__( 'Last full refresh queue finished: %s. That is the queue clock in the WordPress timezone (abbreviation shown), not proof every source succeeded, and not MAX(last_activity) / MAX(last_sync).', 'wpcable' ),
 					esc_html( $queue_date )
 				);
 				?>

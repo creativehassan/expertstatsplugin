@@ -1,5 +1,12 @@
 ### Changelog
 
+*0.4.2 (2026-11-06)*
+* Tasks workspace: `applyCounts` no longer throws a `$root` ReferenceError under `'use strict'` (that exception was swallowed by jQuery 3 Deferred `exceptionHook`, leaving the Loading row after a valid `wpcable_query_tasks` JSON envelope). Renderer now scopes KPI updates, unwraps the WP `{success,data}` envelope, and replaces Loading on ajax failure.
+* Legacy `wpcable.js` in-memory task list does not run on `.wpcable-workspace` pages.
+* Date display uses `wp_date` (never `date_default_timezone_set`) and appends the WordPress timezone abbreviation so UTC vs PKT is labeled.
+* Estimate PERT/fee formulas unchanged (1/1/1 = 1:00/$100/$90; sequential 2/4/10 = 4:40/$466.67/$420 and cautious 6:40/$666.67). Earlier 0.4.1 “broken estimator” report was a fill-order artifact.
+* Production-JS integration tests (jsdom + jQuery) for Tasks renderer and Estimate page.
+
 *0.4.1 (2026-11-06)*
 * QA patch after 0.4.0 live install: reject invalid/future/Y2K38 activity timestamps so ages are not `-4092d ago` and 19 Jan 2038 is not shown
 * Opportunity scores ignore sentinel/future activity

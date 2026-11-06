@@ -37,13 +37,44 @@ require __DIR__ . '/test-opportunities.php';
 echo "\n6) 0.4.1 QA: dates, health provenance, counts, concurrency\n";
 require __DIR__ . '/test-qa-041.php';
 
+echo "\n7) 0.4.2 QA: Tasks renderer scope, timezone label, estimator unchanged\n";
+require __DIR__ . '/test-qa-042.php';
+
+echo "\n8) Production JS integration (jsdom + jQuery, no Codeable network)\n";
+$js_dir    = __DIR__ . '/js';
+$js_status = 0;
+if ( ! is_dir( $js_dir . '/node_modules/jquery' ) ) {
+	$npm_cmd = 'npm install --prefix ' . escapeshellarg( $js_dir ) . ' --no-fund --no-audit --silent';
+	passthru( $npm_cmd, $npm_code );
+	if ( $npm_code ) {
+		echo "  FAIL  npm install for JS tests\n";
+		$js_status = 1;
+	}
+}
+$vendor_jq = __DIR__ . '/fixtures/vendor/jquery.min.js';
+$npm_jq    = $js_dir . '/node_modules/jquery/dist/jquery.min.js';
+if ( ! $js_status && is_file( $npm_jq ) && ! is_file( $vendor_jq ) ) {
+	if ( ! is_dir( dirname( $vendor_jq ) ) ) {
+		mkdir( dirname( $vendor_jq ), 0777, true );
+	}
+	copy( $npm_jq, $vendor_jq );
+}
+if ( ! $js_status ) {
+	passthru( 'node ' . escapeshellarg( $js_dir . '/test-workspace-renderer.mjs' ), $c1 );
+	passthru( 'node ' . escapeshellarg( $js_dir . '/test-estimate-formula.mjs' ), $c2 );
+	$js_status = ( $c1 || $c2 ) ? 1 : 0;
+}
+
 echo "\n=====================================\n";
 echo 'Passed: ' . $wpcable_assertions['pass'] . '  Failed: ' . $wpcable_assertions['fail'] . "\n";
 
-if ( $wpcable_assertions['fail'] ) {
+if ( $wpcable_assertions['fail'] || $js_status ) {
 	echo "Failures:\n";
 	foreach ( $wpcable_assertions['failures'] as $f ) {
 		echo " - $f\n";
+	}
+	if ( $js_status ) {
+		echo " - production JS integration\n";
 	}
 	exit( 1 );
 }

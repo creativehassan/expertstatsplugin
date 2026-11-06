@@ -206,6 +206,11 @@ jQuery(document).ready(function () {
  * Task list functions.
  */
 jQuery(document).ready(function () {
+    // Workspace pages own #wpcable-task-rows. Never let the legacy in-memory
+    // list handler run there (it would fight the AJAX renderer).
+    if (jQuery('.wrap.wpcable-workspace').length) {
+        return;
+    }
     if (!jQuery('.wrap.wpcable_wrap.tasks').length) {
         return;
     }

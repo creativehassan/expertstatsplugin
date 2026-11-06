@@ -1,0 +1,9 @@
+{
+  "name": "wpcable-js-tests",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "jquery": "^3.7.1",
+    "jsdom": "^25.0.1"
+  }
+}

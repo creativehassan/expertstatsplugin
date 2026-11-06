@@ -473,11 +473,6 @@ class wpcable_tasks {
 			return [];
 		}
 
-		$timezone = get_option( 'timezone_string' );
-		if ( $timezone ) {
-			date_default_timezone_set( $timezone );
-		}
-
 		$task['estimate']      = (bool) $task['estimate'];
 		$task['hidden']        = (bool) $task['hidden'];
 		$task['promoted']      = (bool) $task['promoted'];
@@ -512,15 +507,15 @@ class wpcable_tasks {
 		$task['last_activity_date'] = '';
 		$task['last_activity_time'] = '';
 		if ( $task['activity_valid'] ) {
-			$task['last_activity_date'] = date_i18n(
-				get_option( 'date_format' ),
-				$task['last_activity']
-			);
-			$task['last_activity_time'] = date_i18n(
-				get_option( 'time_format' ),
-				$task['last_activity'],
-				false
-			);
+			$date_format = get_option( 'date_format' );
+			$time_format = get_option( 'time_format' );
+			if ( function_exists( 'wp_date' ) ) {
+				$task['last_activity_date'] = wp_date( $date_format, $task['last_activity'] );
+				$task['last_activity_time'] = wp_date( $time_format, $task['last_activity'] );
+			} else {
+				$task['last_activity_date'] = date_i18n( $date_format, $task['last_activity'] );
+				$task['last_activity_time'] = date_i18n( $time_format, $task['last_activity'] );
+			}
 		}
 
 		return apply_filters( 'wpcable_sanitize_task', $task );

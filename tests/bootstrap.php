@@ -94,6 +94,30 @@ function date_i18n( $format, $timestamp = false ) {
 	return date( $format, false === $timestamp ? time() : $timestamp );
 }
 
+function wp_timezone() {
+	$string = get_option( 'timezone_string' );
+	if ( is_string( $string ) && '' !== $string ) {
+		return new DateTimeZone( $string );
+	}
+	$offset  = (float) get_option( 'gmt_offset', 0 );
+	$hours   = (int) $offset;
+	$minutes = (int) round( abs( $offset - $hours ) * 60 );
+	$sign    = $offset < 0 ? '-' : '+';
+	return new DateTimeZone( sprintf( '%s%02d%02d', $sign, abs( $hours ), $minutes ) );
+}
+
+function wp_date( $format, $timestamp = null, $timezone = null ) {
+	if ( null === $timestamp ) {
+		$timestamp = time();
+	}
+	if ( ! $timezone instanceof DateTimeZone ) {
+		$timezone = wp_timezone();
+	}
+	$dt = new DateTime( '@' . (int) $timestamp );
+	$dt->setTimezone( $timezone );
+	return $dt->format( $format );
+}
+
 function number_format_i18n( $number ) {
 	return number_format( (float) $number );
 }
