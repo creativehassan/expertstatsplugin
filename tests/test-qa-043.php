@@ -160,7 +160,8 @@ wpcable_assert( false !== strpos( $css, '@media (max-width: 782px)' ), 'mobile b
 
 $stats_src = file_get_contents( WPCABLE_TEST_ROOT . '/functions/admin-page.php' );
 wpcable_assert( false === strpos( $stats_src, 'Profile tasks_count' ), 'Stats does not use tasks_count as a primary label' );
-wpcable_assert( false !== strpos( $stats_src, 'Profile projects' ), 'Stats uses Profile projects copy' );
+$chrome_src = file_get_contents( WPCABLE_TEST_ROOT . '/functions/admin-chrome.php' );
+wpcable_assert( false !== strpos( $chrome_src, 'Profile projects' ), 'Stats overview uses Profile projects copy' );
 
 $clients_src = file_get_contents( WPCABLE_TEST_ROOT . '/templates/admin-clients.php' );
 wpcable_assert( false !== strpos( $clients_src, 'id="wpcable-client-drawer" hidden' ), 'client drawer starts hidden (not a blank split panel)' );

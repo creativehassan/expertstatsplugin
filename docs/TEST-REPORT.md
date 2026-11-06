@@ -1,12 +1,12 @@
-# Test report — Expert Stats 0.4.3
+# Test report — Expert Stats 0.4.4
 
 Run: `php tests/run.php`  
-Environment: PHP 8 CLI, SQLite in-memory `$wpdb` stub, Node jsdom + jQuery 3  
-Network: none. No Codeable HTTP, no credentials, no WordPress site.
+Environment: PHP 8 CLI, SQLite in-memory `$wpdb` stub, Node jsdom + jQuery 3, Chrome headless for overflow screenshots  
+Network: documentation fetch only (Apiary). No Codeable HTTP, no credentials, no WordPress site.
 
 ## Results
 
-See the runner output for the live pass count (389 PHP+JS assertions in the last run). Suites:
+See the runner output for the live pass count. Suites:
 
 | Suite | What it proves |
 | --- | --- |
@@ -18,6 +18,8 @@ See the runner output for the live pass count (389 PHP+JS assertions in the last
 | 0.4.1 QA | Y2K38 / sentinel timestamps; health provenance; filter KPI SQL; no auto enqueue; avatar CSS; workroom URL. Missing description/comments stay missing (not empty). |
 | 0.4.2 QA (PHP+JS) | Tasks `applyCounts` scope; timezone PKT label; estimator formulas; production JS paints 25 rows from a WP ajax envelope. |
 | 0.4.3 QA | List-payload description/comments mapping with missing vs empty; no new HTTP routes in `api_calls.php`; disconnected browsing keeps saved rows; logout does not truncate; fluid CSS (no 1400px cap); Stats/Settings/Estimate/Opportunities production copy; additive schema 0.0.5. |
+| 0.4.4 QA | Production Stats HTML has exactly one `#wpcable-stats-overview` and one `#wpcable-import-health`; no `.first-stats-row`; financial charts still in source; ZIP root `expertstatsplugin-master`; page-level `scrollWidth <= clientWidth` at 1920 / 1280 / 390. |
+| Packaging | `scripts/package-zip.sh` archive root is always `expertstatsplugin-master/wp-codeable.php`. |
 
 ## Description / comments — what the sources actually show
 
@@ -31,12 +33,12 @@ This is **not** a claim that Codeable has no API for these fields.
 | Public third-party Chrome extension (Philipp Stracker, `stracker-phil/codeable-extension`) | `GET https://api.codeable.io/task/{id}` reads `task.description`; `GET …/task/{id}/comments` uses `private` and `is_contractors_only` | Credible historical clue that those fields exist on **other** routes. That is **not** official Codeable documentation, so this plugin does **not** add those HTTP requests. | Pagination / full public+private coverage **unverified** |
 | Codeable Help Center (product, not API) | Workroom description and comments as product features | The app has the sections. Not an API contract. | N/A |
 
-0.4.3 therefore:
+Public documentation **does exist**: https://codeable.docs.apiary.io/ (blueprint `codeable.apib`). See `docs/APIARY-CODEABLE.md` for exact sections. 0.4.4 still:
 
 1. Maps `description` / `body` / `details` / `task_description` and `comments` / `public_comments` / `private_comments` **only if those keys are already on the permitted list-payload object**.
-2. Does not invent `GET /task/{id}` or `/comments`.
-3. Distinguishes missing key vs empty value vs stored text. Missing is not rendered as an empty description or empty thread.
-4. Stores visibility flags (`private`, `is_contractors_only`) only when present. Private comments are never inferred or fetched beyond the authorized payload.
+2. Does **not** add documented `GET /tasks/{id}` or `GET /tasks/{id}/comments` yet — comments pagination in the blueprint is `limit`+`offset` in Parameters but `?page=` in `Link` examples; GET list sample omits `private` while the intro and POST body include it.
+3. Distinguishes missing key vs empty value vs stored text. Missing is not rendered as an empty description or empty thread. One live saved record without those keys is not complete source proof.
+4. Stores visibility flags (`private`, `is_contractors_only`) only when present. `is_contractors_only` is not in the Apiary blueprint.
 5. UI sections exist for genuine stored records.
 
 **Smallest extra evidence needed (no token/password):** a sanitized JSON sample of one `users/me/tasks/{filter}` item, **or** an official documented path if a dedicated comments/description read route should be added later.

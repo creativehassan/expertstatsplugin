@@ -9,3 +9,5 @@ Requires PHP 8+ with PDO SQLite, and Node.js with npm for the production-JS inte
 `tests/fixtures/integration/` loads the real `assets/js/wpcable-workspace.js` against a mocked WP `{success,data}` ajax envelope, plus the Estimate page formulas with `fee_type=client`.
 
 Installable ZIPs must unpack to `expertstatsplugin-master/wp-codeable.php`. Version is filename + plugin header only. Package with `./scripts/package-zip.sh`; `tests/test-package-zip.php` asserts the archive root.
+
+`tests/js/capture-production.mjs` screenshots production templates at 1920 / 1280 / 390 and asserts page-level `scrollWidth <= clientWidth` (table-local scrolling allowed).

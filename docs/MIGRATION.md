@@ -1,6 +1,6 @@
-# Migration and rollback — Expert Stats 0.4.3
+# Migration and rollback — Expert Stats 0.4.4
 
-This release stays inside the existing plugin directory and main file (`wp-codeable.php`). It is a patch of 0.4.2, not a separate app.
+This release stays inside the existing plugin directory and main file (`wp-codeable.php`). It is a patch of 0.4.3, not a separate app. Schema is still **0.0.5** (no new columns in 0.4.4).
 
 ## What changes in the database
 
@@ -27,13 +27,13 @@ New option (non-secret derived snapshot): `wpcable_opportunity_snapshot`. Delete
 
 ## Packaging (required ZIP root)
 
-All installable ZIPs MUST unpack to **`expertstatsplugin-master/wp-codeable.php`**. Version belongs in the plugin header and the ZIP **filename** only (`expertstatsplugin-0.4.3-hybrid.zip`). Never name the archive root `expertstatsplugin-0.4.3/` (or any other versioned folder): WordPress will install a **second, inactive** plugin and leave the live `expertstatsplugin-master/` copy untouched.
+All installable ZIPs MUST unpack to **`expertstatsplugin-master/wp-codeable.php`**. Version belongs in the plugin header and the ZIP **filename** only (`expertstatsplugin-0.4.4-hybrid.zip`). Never name the archive root `expertstatsplugin-0.4.4/` (or any other versioned folder): WordPress will install a **second, inactive** plugin and leave the live `expertstatsplugin-master/` copy untouched.
 
 Canonical command:
 
 ```
 ./scripts/package-zip.sh
-./scripts/package-zip.sh /path/to/expertstatsplugin-0.4.3-hybrid.zip
+./scripts/package-zip.sh /path/to/expertstatsplugin-0.4.4-hybrid.zip
 ```
 
 `tests/test-package-zip.php` (via `php tests/run.php`) builds a temp archive and asserts that root. If a versioned duplicate was already uploaded, deactivate it in Plugins and delete the **folder on disk** (or upload a corrected ZIP over the intended `expertstatsplugin-master/` directory). Do **not** use the WordPress plugin uninstaller / Delete on that duplicate — `uninstall.php` drops the **shared** `codeable_*` tables and options used by the active install.
@@ -50,11 +50,15 @@ Canonical command:
    - `codeable_clients`
    - `codeable_opportunities`
 
-Hard-refresh admin assets (file versions are `0.4.3`).
+Hard-refresh admin assets (file versions are `0.4.4`).
+
+0.4.4 Stats cleanup: the new overview is the only identity/scope summary; import health appears once. Do **not** Plugins → Delete a leftover `expertstatsplugin-0.4.3/` folder (`uninstall.php` drops shared tables). Overlay this ZIP onto `expertstatsplugin-master/`.
+
+Public Apiary docs: https://codeable.docs.apiary.io/ — see `docs/APIARY-CODEABLE.md`. This patch does not add `GET /tasks/{id}` or comments HTTP routes.
 
 ## Rollback
 
-1. Replace the plugin folder with the 0.4.2 ZIP (or earlier).
+1. Replace the plugin folder with the 0.4.3 ZIP (or earlier).
 2. New 0.0.5 columns can remain unused; they are additive. Do **not** truncate tables to roll back — that would delete local notes.
 3. Optionally delete option `wpcable_opportunity_snapshot`.
 

@@ -208,6 +208,13 @@ function plugins_url( $path = '', $plugin = '' ) {
 	return 'https://example.test/wp-content/plugins/expertstatsplugin/' . ltrim( $path, '/' );
 }
 
+function add_action() {}
+function add_menu_page() {}
+function add_submenu_page() {}
+function add_thickbox() {}
+function register_setting() {}
+function add_filter() {}
+
 function wp_json_encode( $data ) {
 	return json_encode( $data );
 }

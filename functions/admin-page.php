@@ -32,13 +32,8 @@ function codeable_transcactions_stats_cb() {
 
 	$account_details   = wpcable_get_account_details();
 	$average_task_size = get_option( 'wpcable_average' );
-	$balance           = get_option( 'wpcable_balance' );
-	$revenue           = get_option( 'wpcable_revenue' );
 
 	$wpcable_stats = new wpcable_stats();
-	$wpcable_tasks = new wpcable_tasks();
-	$local_counts  = $wpcable_tasks->get_state_counts();
-	$tx_count      = $wpcable_stats->get_transaction_count();
 
 	$get_first_task = $wpcable_stats->get_first_task();
 	$get_last_task  = $wpcable_stats->get_last_task();
@@ -141,110 +136,6 @@ function codeable_transcactions_stats_cb() {
 	?>
 
 	<div class="cable_stats_wrap">
-
-		<div class="clearfix spacer"></div>
-
-		<div class="flex-row first-stats-row">
-
-			<div class="box user-info">
-				<div class="avatar">
-					<?php
-					$avatar_url = wpcable_account_avatar_url( $account_details );
-					if ( $avatar_url ) :
-						?>
-						<img class="round" src="<?php echo esc_url( $avatar_url ); ?>"/>
-						<?php
-					endif;
-					?>
-					<div class="rating" data-score="<?php echo esc_attr( wpcable_account_stat( $account_details, 'avg_rating', '' ) ); ?>"></div>
-				</div>
-				<div class="details">
-					<div class="codeable-logo">
-						<?php echo '<img src="' . esc_url( plugins_url( 'assets/images/codeable-full.png', dirname( __FILE__ ) ) ) . '" > '; ?>
-					</div>
-					<span class="name"><?php echo esc_html( wpcable_account_detail( $account_details, 'first_name' ) . ' ' . wpcable_account_detail( $account_details, 'last_name' ) ); ?></span>
-					<span class="label role"><?php echo esc_html( wpcable_account_detail( $account_details, 'role' ) ); ?></span>
-					<span class="user-id"><?php echo esc_html__( 'ID', 'wpcable' ) . ': <a href="https://app.codeable.io/tasks/new?preferredContractor=' . esc_attr( wpcable_account_detail( $account_details, 'id' ) ) . '" target="_blank" title="' . esc_attr__( 'Direct hire link', 'wpcable' ) . '">' . esc_html( wpcable_account_detail( $account_details, 'id' ) ); ?></a></span>
-					<span class="wpcable-source-chip"><?php esc_html_e( 'Source: saved expert profile', 'wpcable' ); ?></span>
-				</div>
-			</div>
-
-			<div class="box completed-tasks">
-				<div class="column_inner">
-					<div class="maindata">
-						<div class="label"><?php echo esc_html__( 'Profile completed', 'wpcable' ); ?></div>
-						<div class="value"><?php echo esc_html( wpcable_account_detail( $account_details, 'completed_tasks_count', '—' ) ); ?></div>
-					</div>
-					<div class="footerdata">
-						<span class="label"><?php echo esc_html__( 'Profile projects', 'wpcable' ); ?></span>:
-						<span class="value">
-							<?php echo esc_html( wpcable_account_detail( $account_details, 'tasks_count', '—' ) ); ?>
-						</span><br/>
-						<span class="label"><?php echo esc_html__( 'Imported local rows', 'wpcable' ); ?></span>:
-						<span class="value"><?php echo esc_html( number_format_i18n( (int) $local_counts['imported'] ) ); ?></span>
-						<p class="description">
-							<?php esc_html_e( 'Profile counts and imported project rows are different scopes. Do not treat them as one number.', 'wpcable' ); ?>
-						</p>
-						<p>
-							<a href="<?php echo esc_url( admin_url( 'admin.php?page=codeable_tasks' ) ); ?>">
-								<?php esc_html_e( 'Open the projects workspace', 'wpcable' ); ?>
-							</a>
-							|
-							<a href="<?php echo esc_url( admin_url( 'admin.php?page=codeable_clients' ) ); ?>">
-								<?php esc_html_e( 'Clients', 'wpcable' ); ?>
-							</a>
-						</p>
-					</div>
-				</div>
-			</div>
-
-			<div class="box balance">
-				<div class="column_inner">
-					<div class="maindata">
-						<div class="label"><?php echo esc_html__( 'Balance', 'wpcable' ); ?></div>
-						<div class="value">
-							<?php
-							if ( $financial_available && is_numeric( $balance ) ) {
-								echo esc_html( '$' . wpcable_money( $balance ) );
-							} else {
-								echo '<span class="wpcable-kpi--unavailable">' . esc_html__( 'Unavailable', 'wpcable' ) . '</span>';
-							}
-							?>
-						</div>
-					</div>
-					<?php if ( ! $financial_available ) : ?>
-						<p class="description"><?php esc_html_e( 'Money transactions are not imported. This is not $0.', 'wpcable' ); ?></p>
-					<?php endif; ?>
-				</div>
-			</div>
-
-			<div class="box total-revenue">
-				<div class="column_inner">
-					<div class="maindata">
-						<div class="label"><?php echo esc_html__( 'Total Revenue', 'wpcable' ); ?></div>
-						<div class="value">
-							<?php
-							if ( $financial_available && is_numeric( $revenue ) ) {
-								echo esc_html( '$' . wpcable_money( $revenue ) );
-							} else {
-								echo '<span class="wpcable-kpi--unavailable">' . esc_html__( 'Unavailable', 'wpcable' ) . '</span>';
-							}
-							?>
-						</div>
-					</div>
-					<div class="footerdata">
-						<?php if ( $financial_available && ! empty( $get_first_task['dateadded'] ) ) : ?>
-							<span class="label"><?php echo esc_html__( 'Since', 'wpcable' ); ?></span>:
-							<span class="value"><?php echo esc_html( wpcable_date( $get_first_task['dateadded'] ) ); ?></span>
-						<?php else : ?>
-							<span class="description"><?php esc_html_e( 'No transaction date range — hiding 1970/empty defaults.', 'wpcable' ); ?></span>
-						<?php endif; ?>
-					</div>
-				</div>
-			</div>
-
-		</div>
-		<!-- end row  -->
 
 		<?php if ( ! $financial_available ) : ?>
 			<div class="wpcable-financial-empty">
@@ -547,7 +438,7 @@ function codeable_transcactions_stats_cb() {
 					<small><em>(<?php echo __( 'all time, order by revenue', 'wpcable' ); ?>)</em></small>
 				</h3>
 
-				<div class="whitebox">
+				<div class="whitebox wpcable-table-scroll">
 					<div id="clients_wrap">
 
 						<table class="datatable widefat fixed striped posts" id="clients_table">
@@ -649,9 +540,6 @@ function codeable_transcactions_stats_cb() {
 		<?php endif; ?>
 
 	</div>
-
-	<?php codeable_last_fetch_info(); ?>
-
 
 	<?php if ( $financial_available ) : ?>
 	<script>
@@ -1186,7 +1074,6 @@ function codeable_transcactions_stats_cb() {
 	</script>
 	<?php endif; ?>
 
-	</div>
 	<?php
 	wpcable_app_close();
 }

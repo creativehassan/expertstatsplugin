@@ -8,15 +8,6 @@
 
 require_once __DIR__ . '/bootstrap.php';
 
-if ( ! function_exists( 'add_action' ) ) {
-	function add_action() {}
-	function add_menu_page() {}
-	function add_submenu_page() {}
-	function add_thickbox() {}
-	function register_setting() {}
-	function add_filter() {}
-}
-
 global $wpdb;
 $wpdb = new wpcable_test_wpdb();
 wpcable_load_plugin_classes();

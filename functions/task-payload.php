@@ -15,11 +15,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * if the key is already present. Does not call a new endpoint.
  *
  * Provenance: this plugin historically mapped only title/state/prices/flags
- * from GET users/me/tasks/{filter}. A public Chrome extension by a plugin
- * contributor (stracker-phil/codeable-extension) reads task.description from
- * GET /task/{id}. Whether the list payload also includes description is
- * unverified here (no checked-in sample). Official Codeable API docs were
- * not found. User historical clue: description was visible on an endpoint.
+ * from GET users/me/tasks/{filter}. Public Apiary blueprint
+ * (https://codeable.docs.apiary.io/, resource `/tasks/{id}` GET) documents a
+ * `description` field on the individual task. List samples vary: suggestions
+ * include `description`; inquiring/in_progress/archive samples do not.
+ * Dedicated comments live at GET `/tasks/{id}/comments` in that blueprint.
+ * This mapper still only reads keys already on the permitted list object;
+ * it does not add those extra HTTP routes (pagination/visibility on comments
+ * are internally inconsistent in the blueprint — see docs/APIARY-CODEABLE.md).
  *
  * @param array $task Raw API task object.
  * @return array {present, key, text}

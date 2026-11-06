@@ -46,6 +46,9 @@ require __DIR__ . '/test-qa-043.php';
 echo "\n7d) ZIP packaging: archive root expertstatsplugin-master/wp-codeable.php\n";
 require __DIR__ . '/test-package-zip.php';
 
+echo "\n7e) 0.4.4 QA: one Stats overview, one import-health, no legacy duplicate\n";
+require __DIR__ . '/test-qa-044.php';
+
 echo "\n8) Production JS integration (jsdom + jQuery, no Codeable network)\n";
 $js_dir    = __DIR__ . '/js';
 $js_status = 0;
@@ -71,16 +74,39 @@ if ( ! $js_status ) {
 	$js_status = ( $c1 || $c2 ) ? 1 : 0;
 }
 
+echo "\n9) Production templates + page-level overflow screenshots\n";
+$shot_status = 0;
+passthru( 'php ' . escapeshellarg( __DIR__ . '/render-production-screens.php' ), $render_code );
+if ( $render_code ) {
+	echo "  FAIL  render-production-screens.php\n";
+	$shot_status = 1;
+} else {
+	if ( ! is_dir( $js_dir . '/node_modules/puppeteer-core' ) ) {
+		passthru( 'npm install --prefix ' . escapeshellarg( $js_dir ) . ' --no-fund --no-audit --silent', $npm2 );
+		if ( $npm2 ) {
+			echo "  FAIL  npm install puppeteer-core\n";
+			$shot_status = 1;
+		}
+	}
+	if ( ! $shot_status ) {
+		passthru( 'node ' . escapeshellarg( $js_dir . '/capture-production.mjs' ), $cap );
+		$shot_status = $cap ? 1 : 0;
+	}
+}
+
 echo "\n=====================================\n";
 echo 'Passed: ' . $wpcable_assertions['pass'] . '  Failed: ' . $wpcable_assertions['fail'] . "\n";
 
-if ( $wpcable_assertions['fail'] || $js_status ) {
+if ( $wpcable_assertions['fail'] || $js_status || $shot_status ) {
 	echo "Failures:\n";
 	foreach ( $wpcable_assertions['failures'] as $f ) {
 		echo " - $f\n";
 	}
 	if ( $js_status ) {
 		echo " - production JS integration\n";
+	}
+	if ( $shot_status ) {
+		echo " - production screenshots / overflow\n";
 	}
 	exit( 1 );
 }

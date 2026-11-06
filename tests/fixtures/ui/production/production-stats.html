@@ -46,7 +46,7 @@
 					href="https://example.test/wp-admin/admin.php?page=codeable_settings"
 				>Settings</a>
 					</nav>
-		<section class="wpcable-overview">
+		<section class="wpcable-overview" id="wpcable-stats-overview">
 		<div class="wpcable-kpi-row">
 			<div class="wpcable-kpi wpcable-kpi--profile">
 								<div>
@@ -82,10 +82,12 @@
 				<span class="wpcable-kpi__meta">Grounded from local records, not confirmed needs</span>
 			</div>
 			<div class="wpcable-kpi wpcable-kpi--unavailable">
-				<span class="wpcable-kpi__label">Money transactions</span>
+				<span class="wpcable-kpi__label">
+					Money transactions				</span>
 				<span class="wpcable-kpi__value">
 					Unavailable				</span>
-				<span class="wpcable-kpi__meta">Not imported — this is not $0</span>
+				<span class="wpcable-kpi__meta">
+					Not imported — this is not $0				</span>
 			</div>
 		</div>
 		<div class="wpcable-overview-charts">
@@ -173,76 +175,6 @@
 	
 	<div class="cable_stats_wrap">
 
-		<div class="clearfix spacer"></div>
-
-		<div class="flex-row first-stats-row">
-
-			<div class="box user-info">
-				<div class="avatar">
-										<div class="rating" data-score="5"></div>
-				</div>
-				<div class="details">
-					<div class="codeable-logo">
-						<img src="https://example.test/wp-content/plugins/expertstatsplugin/assets/images/codeable-full.png" > 					</div>
-					<span class="name">Fixture Expert</span>
-					<span class="label role">contractor</span>
-					<span class="user-id">ID: <a href="https://app.codeable.io/tasks/new?preferredContractor=1001" target="_blank" title="Direct hire link">1001</a></span>
-					<span class="wpcable-source-chip">Source: users/me profile</span>
-				</div>
-			</div>
-
-			<div class="box completed-tasks">
-				<div class="column_inner">
-					<div class="maindata">
-						<div class="label">Profile completed</div>
-						<div class="value">12</div>
-					</div>
-					<div class="footerdata">
-						<span class="label">Profile projects</span>:
-						<span class="value">
-							40						</span><br/>
-						<span class="label">Imported local rows</span>:
-						<span class="value">30</span>
-						<p class="description">
-							Profile counts and imported project rows are different scopes. Do not treat them as one number.						</p>
-						<p>
-							<a href="https://example.test/wp-admin/admin.php?page=codeable_tasks">
-								Open the projects workspace							</a>
-							|
-							<a href="https://example.test/wp-admin/admin.php?page=codeable_clients">
-								Clients							</a>
-						</p>
-					</div>
-				</div>
-			</div>
-
-			<div class="box balance">
-				<div class="column_inner">
-					<div class="maindata">
-						<div class="label">Balance</div>
-						<div class="value">
-							<span class="wpcable-kpi--unavailable">Unavailable</span>						</div>
-					</div>
-											<p class="description">Money transactions are not imported. This is not $0.</p>
-									</div>
-			</div>
-
-			<div class="box total-revenue">
-				<div class="column_inner">
-					<div class="maindata">
-						<div class="label">Total Revenue</div>
-						<div class="value">
-							<span class="wpcable-kpi--unavailable">Unavailable</span>						</div>
-					</div>
-					<div class="footerdata">
-													<span class="description">No transaction date range — hiding 1970/empty defaults.</span>
-											</div>
-				</div>
-			</div>
-
-		</div>
-		<!-- end row  -->
-
 					<div class="wpcable-financial-empty">
 				<h2>Money charts are hidden</h2>
 				<p>
@@ -255,43 +187,8 @@
 		
 	</div>
 
-		<div class="codeable-last-refresh wpcable-import-health">
-		<strong>Import health (per source)</strong>
-				<ul class="wpcable-import-health-list">
-											<li class="wpcable-import-health-cached">
-					<span class="wpcable-import-health-label">Expert profile (users/me)</span>
-					<span class="wpcable-import-health-status">Cached locally — no recorded attempt — Cached locally — no recorded attempt. This is not an instrumented import success.</span>
-									</li>
-											<li class="wpcable-import-health-cached">
-					<span class="wpcable-import-health-label">Imported tasks</span>
-					<span class="wpcable-import-health-status">Cached locally — no recorded attempt — 30 local rows — no recorded attempt. Cached imports are not the same as an instrumented Refresh.</span>
-									</li>
-											<li class="wpcable-import-health-never">
-					<span class="wpcable-import-health-label">Money transactions</span>
-					<span class="wpcable-import-health-status">No recorded attempt — No recorded attempt and no local rows. Missing is not $0 revenue.</span>
-									</li>
-					</ul>
-		<p class="description">
-							No completed refresh queue is stored. Per-source timestamps appear only after an instrumented attempt recorded success — never from cached row dates.						<span class="tooltip" tabindex="0">
-				<span class="tooltip-text">Click Refresh to start a read-only Codeable GET queue. Page views and hourly WP-Cron do not enqueue a new queue (0.4.1). An interrupted Refresh still resumes. Access is read-only. A missing transactions import is not $0 revenue. Cached rows without a recorded attempt are labeled as cached, not as a successful import.</span>
-				<i class="dashicons dashicons-info"></i>
-			</span>
-			|
-							<span class="wpcable-sync-disabled">Refresh is off while disconnected. Saved data stays visible.</span>
-				<a href="https://example.test/wp-admin/admin.php?page=codeable_settings">
-					Connect in Settings				</a>
-					</p>
-	</div>
-	<div class="codeable-sync-progress" style="display:none" data-nonce="test-nonce" data-resume-pending="1" data-sync-allowed="0">
-		<span class="spinner is-active"></span>
-		<span class="msg">
-					</span>
-	</div>
 	
-
-	
-	</div>
-		<div class="codeable-last-refresh wpcable-import-health">
+		<div id="wpcable-import-health" class="codeable-last-refresh wpcable-import-health">
 		<strong>Import health (per source)</strong>
 				<ul class="wpcable-import-health-list">
 											<li class="wpcable-import-health-cached">

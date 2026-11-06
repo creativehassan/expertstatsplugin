@@ -13,12 +13,20 @@
 	--wpcable-warn: #d63638;
 	--wpcable-ok: #00a32a;
 	--wpcable-surface: #f6f7f7;
-	max-width: none;
-	width: 100%;
+	max-width: 100%;
+	width: auto;
+	min-width: 0;
 	box-sizing: border-box;
+	overflow-x: hidden;
 	font-size: 15px;
 	line-height: 1.5;
 	color: #1d2327;
+}
+
+.wpcable-app *,
+.wpcable-app *::before,
+.wpcable-app *::after {
+	box-sizing: border-box;
 }
 
 .wpcable-app .container,
@@ -129,9 +137,10 @@
 
 .wpcable-kpi-row {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 11.5rem), 1fr));
 	gap: 12px;
 	margin: 0 0 20px;
+	min-width: 0;
 }
 
 .wpcable-kpi {
@@ -140,13 +149,15 @@
 	border-radius: 10px;
 	padding: 16px 18px;
 	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .wpcable-kpi--profile {
 	display: flex;
 	gap: 14px;
 	align-items: center;
-	grid-column: span 2;
+	grid-column: auto;
 }
 
 .wpcable-workspace img.wpcable-avatar,
@@ -203,9 +214,10 @@
 
 .wpcable-overview-charts {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
 	gap: 12px;
 	margin: 0 0 24px;
+	min-width: 0;
 }
 
 .wpcable-chart-card {
@@ -285,7 +297,9 @@
 }
 
 .wpcable-search {
-	min-width: 260px;
+	min-width: 0;
+	max-width: 100%;
+	width: min(260px, 100%);
 	min-height: 36px;
 }
 
@@ -327,8 +341,11 @@
 	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
 }
 
-.wpcable-table-card {
-	overflow: auto;
+.wpcable-table-card,
+.wpcable-table-scroll {
+	overflow-x: auto;
+	max-width: 100%;
+	min-width: 0;
 }
 
 .wpcable-tasks-table,
@@ -600,11 +617,26 @@
 .wpcable-workspace--stats .cable_stats_wrap,
 .wpcable-app.wpcable-workspace--stats .flex-row {
 	width: 100%;
+	max-width: 100%;
+	min-width: 0;
 }
 
-.wpcable-workspace--stats .first-stats-row .box {
-	flex: 1 1 220px;
-	min-width: 200px;
+.wpcable-workspace .flex-row {
+	flex-wrap: wrap;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.wpcable-workspace .row {
+	margin-left: 0;
+	margin-right: 0;
+	max-width: 100%;
+}
+
+.wpcable-workspace .second-stats-row .box,
+.wpcable-workspace .third-stats-row .box {
+	min-width: 0;
+	flex: 1 1 16rem;
 }
 
 .wpcable-workspace--stats .box .label,
@@ -620,9 +652,10 @@
 .wpcable-workspace--estimate .estimate-row,
 .wpcable-estimate .estimate-row {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
 	gap: 16px;
 	width: 100%;
+	min-width: 0;
 }
 
 .wpcable-workspace--estimate .estimate-row .postbox,
@@ -636,7 +669,8 @@
 .wpcable-workspace--estimate .estimate-row .label,
 .wpcable-estimate .label {
 	display: inline-block;
-	min-width: 12em;
+	min-width: 0;
+	max-width: 100%;
 	font-size: 14px;
 }
 
@@ -651,8 +685,9 @@
 
 .wpcable-settings-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
 	gap: 16px;
+	min-width: 0;
 }
 
 .wpcable-settings-card h2 {
@@ -696,13 +731,19 @@
 	font-size: 22px;
 }
 
+@media (min-width: 1280px) {
+	.wpcable-kpi--profile {
+		grid-column: span 2;
+	}
+}
+
 @media (max-width: 1280px) {
 	.wpcable-kpi--profile {
-		grid-column: span 1;
+		grid-column: auto;
 	}
 
 	.wpcable-search {
-		min-width: 180px;
+		width: min(180px, 100%);
 	}
 }
 
@@ -718,6 +759,7 @@
 	.wpcable-search {
 		min-width: 0;
 		width: 100%;
+		max-width: 100%;
 	}
 
 	.wpcable-workspace table {

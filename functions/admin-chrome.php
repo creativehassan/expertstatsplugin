@@ -166,6 +166,12 @@ function wpcable_overview_metrics() {
 		wpcable_account_detail( $account, 'last_name', '' )
 	);
 
+	$financial = $stats->has_transaction_data();
+	$first     = $financial ? $stats->get_first_task() : array();
+	$since     = ( ! empty( $first['dateadded'] ) && wpcable_is_valid_datetime( $first['dateadded'] ) )
+		? wpcable_date( $first['dateadded'] )
+		: '';
+
 	return array(
 		'account'            => $account,
 		'display_name'       => $name ? $name : __( 'Saved expert profile', 'wpcable' ),
@@ -180,7 +186,10 @@ function wpcable_overview_metrics() {
 		'clients'            => $tasks->count_distinct_clients(),
 		'opportunities'      => count( $cues ),
 		'transactions'       => $stats->get_transaction_count(),
-		'financial'          => $stats->has_transaction_data(),
+		'financial'          => $financial,
+		'balance'            => get_option( 'wpcable_balance' ),
+		'revenue'            => get_option( 'wpcable_revenue' ),
+		'since'              => $since,
 		'activity'           => $tasks->get_activity_buckets(),
 		'states'             => $tasks->get_state_distribution(),
 		'connection'         => wpcable_connection_state(),
@@ -284,7 +293,7 @@ function wpcable_overview_panel() {
 		$state_max = max( $state_max, (int) $row['count'] );
 	}
 	?>
-	<section class="wpcable-overview">
+	<section class="wpcable-overview" id="wpcable-stats-overview">
 		<div class="wpcable-kpi-row">
 			<div class="wpcable-kpi wpcable-kpi--profile">
 				<?php if ( $m['avatar'] ) : ?>
@@ -328,17 +337,50 @@ function wpcable_overview_panel() {
 				<span class="wpcable-kpi__meta"><?php esc_html_e( 'Grounded from local records, not confirmed needs', 'wpcable' ); ?></span>
 			</div>
 			<div class="wpcable-kpi<?php echo $m['financial'] ? '' : ' wpcable-kpi--unavailable'; ?>">
-				<span class="wpcable-kpi__label"><?php esc_html_e( 'Money transactions', 'wpcable' ); ?></span>
+				<span class="wpcable-kpi__label">
+					<?php echo $m['financial'] ? esc_html__( 'Total revenue', 'wpcable' ) : esc_html__( 'Money transactions', 'wpcable' ); ?>
+				</span>
 				<span class="wpcable-kpi__value">
 					<?php
-					if ( $m['financial'] ) {
+					if ( $m['financial'] && is_numeric( $m['revenue'] ) ) {
+						echo esc_html( '$' . wpcable_money( $m['revenue'] ) );
+					} elseif ( $m['financial'] ) {
 						echo esc_html( number_format_i18n( $m['transactions'] ) );
 					} else {
 						esc_html_e( 'Unavailable', 'wpcable' );
 					}
 					?>
 				</span>
-				<span class="wpcable-kpi__meta"><?php echo $m['financial'] ? esc_html__( 'Imported transaction rows', 'wpcable' ) : esc_html__( 'Not imported — this is not $0', 'wpcable' ); ?></span>
+				<span class="wpcable-kpi__meta">
+					<?php
+					if ( $m['financial'] ) {
+						$bits = array(
+							sprintf(
+								/* translators: %s: transaction count */
+								__( '%s transactions', 'wpcable' ),
+								number_format_i18n( $m['transactions'] )
+							),
+						);
+						if ( is_numeric( $m['balance'] ) ) {
+							$bits[] = sprintf(
+								/* translators: %s: formatted money amount */
+								__( 'Balance $%s', 'wpcable' ),
+								wpcable_money( $m['balance'] )
+							);
+						}
+						if ( $m['since'] ) {
+							$bits[] = sprintf(
+								/* translators: %s: formatted date */
+								__( 'since %s', 'wpcable' ),
+								$m['since']
+							);
+						}
+						echo esc_html( implode( ' · ', $bits ) );
+					} else {
+						esc_html_e( 'Not imported — this is not $0', 'wpcable' );
+					}
+					?>
+				</span>
 			</div>
 		</div>
 		<div class="wpcable-overview-charts">

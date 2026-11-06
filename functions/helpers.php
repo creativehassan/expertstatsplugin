@@ -640,7 +640,7 @@ function codeable_last_fetch_info() {
 	$nonce      = wp_create_nonce( 'wpcable-sync' );
 
 	?>
-	<div class="codeable-last-refresh wpcable-import-health">
+	<div id="wpcable-import-health" class="codeable-last-refresh wpcable-import-health">
 		<strong><?php esc_html_e( 'Import health (per source)', 'wpcable' ); ?></strong>
 		<?php if ( $running ) : ?>
 			<p class="wpcable-sync-banner">

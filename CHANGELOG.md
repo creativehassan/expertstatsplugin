@@ -1,5 +1,12 @@
 ### Changelog
 
+*0.4.4 (2026-11-06)*
+* Stats: remove the legacy profile / Balance / Total Revenue row that duplicated the new overview. One identity/scope summary (`#wpcable-stats-overview`). Genuine transaction charts, conversions, averages, and the clients-by-revenue table still render when money is imported; empty finance stays Unavailable, not $0.
+* One import-health footer (`#wpcable-import-health` via `wpcable_app_close` only). Do not WP-uninstall a leftover versioned duplicate folder.
+* Page-level horizontal overflow: plugin chrome `overflow-x: hidden` + `minmax(min(100%, …))` grids; wide tables scroll inside `.wpcable-table-scroll` / `.wpcable-table-card`.
+* Public Codeable Apiary docs (https://codeable.docs.apiary.io/) are now cited. Dedicated `GET /tasks/{id}` and `GET /tasks/{id}/comments` are **not** added in this patch — blueprint pagination (`limit`/`offset` vs `page`) and list `private` field are inconsistent. See `docs/APIARY-CODEABLE.md`.
+* ZIP root remains `expertstatsplugin-master/wp-codeable.php` (`./scripts/package-zip.sh`).
+
 *0.4.3 (2026-11-06)*
 * Cohesive six-screen chrome: fluid WP-content width, readable type, Comfortable/Compact density, in-page nav. WP shell / Astra notices untouched.
 * Stats overview from local DB (profile vs imported scopes, clients, opportunity cues, valid-date activity). Missing finances stay unavailable, not $0.
