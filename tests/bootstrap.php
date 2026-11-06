@@ -10,6 +10,9 @@ error_reporting( E_ALL );
 ini_set( 'display_errors', '1' );
 
 define( 'ABSPATH', sys_get_temp_dir() . '/wpcable-tests/' );
+if ( ! defined( 'AUTH_SALT' ) ) {
+	define( 'AUTH_SALT', 'wpcable-test-salt' );
+}
 define( 'HOUR_IN_SECONDS', 3600 );
 define( 'DAY_IN_SECONDS', 86400 );
 define( 'ARRAY_A', 'ARRAY_A' );
@@ -136,7 +139,43 @@ function wp_unslash( $value ) {
 	return $value;
 }
 
+function wp_parse_url( $url ) {
+	return parse_url( $url );
+}
+
+function is_wp_error( $thing ) {
+	return is_object( $thing ) && method_exists( $thing, 'get_error_message' );
+}
+
+function wp_remote_request( $url, $args = array() ) {
+	unset( $url, $args );
+	return array(
+		'body'     => '',
+		'response' => array( 'code' => 0 ),
+		'headers'  => array(),
+	);
+}
+
+function wp_remote_retrieve_response_code( $response ) {
+	return isset( $response['response']['code'] ) ? (int) $response['response']['code'] : 0;
+}
+
+function wp_remote_retrieve_body( $response ) {
+	return isset( $response['body'] ) ? $response['body'] : '';
+}
+
 function apply_filters( $tag, $value ) {
+	global $wpcable_filters;
+	$args = func_get_args();
+	array_shift( $args );
+	if ( empty( $wpcable_filters[ $tag ] ) ) {
+		return $value;
+	}
+	foreach ( $wpcable_filters[ $tag ] as $hook ) {
+		$pass       = array_slice( $args, 0, max( 1, (int) $hook['args'] ) );
+		$value      = call_user_func_array( $hook['cb'], $pass );
+		$args[0]    = $value;
+	}
 	return $value;
 }
 
@@ -213,7 +252,20 @@ function add_menu_page() {}
 function add_submenu_page() {}
 function add_thickbox() {}
 function register_setting() {}
-function add_filter() {}
+function add_filter( $tag = '', $callback = null, $priority = 10, $accepted_args = 1 ) {
+	global $wpcable_filters;
+	if ( ! $tag || ! is_callable( $callback ) ) {
+		return true;
+	}
+	if ( ! isset( $wpcable_filters[ $tag ] ) ) {
+		$wpcable_filters[ $tag ] = array();
+	}
+	$wpcable_filters[ $tag ][] = array(
+		'cb'   => $callback,
+		'args' => $accepted_args,
+	);
+	return true;
+}
 
 function wp_json_encode( $data ) {
 	return json_encode( $data );
@@ -267,7 +319,9 @@ class wpcable_test_wpdb {
 				comments_json TEXT,
 				comments_present INTEGER DEFAULT 0,
 				comments_complete INTEGER DEFAULT 0,
-				comments_source TEXT DEFAULT ""
+				comments_source TEXT DEFAULT "",
+				history_account_id TEXT DEFAULT "",
+				history_meta_json TEXT DEFAULT ""
 			)'
 		);
 		$this->pdo->exec(
@@ -456,8 +510,10 @@ function wpcable_load_plugin_classes() {
 	require_once WPCABLE_TEST_ROOT . '/classes/object_cache.php';
 	require_once WPCABLE_TEST_ROOT . '/functions/helpers.php';
 	require_once WPCABLE_TEST_ROOT . '/functions/task-payload.php';
+	require_once WPCABLE_TEST_ROOT . '/functions/task-detail.php';
 	require_once WPCABLE_TEST_ROOT . '/functions/admin-chrome.php';
 	require_once WPCABLE_TEST_ROOT . '/classes/import_health.php';
+	require_once WPCABLE_TEST_ROOT . '/classes/api_calls.php';
 	require_once WPCABLE_TEST_ROOT . '/classes/estimate.php';
 	require_once WPCABLE_TEST_ROOT . '/classes/stats.php';
 	require_once WPCABLE_TEST_ROOT . '/classes/tasks.php';

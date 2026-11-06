@@ -181,7 +181,7 @@ wpcable_assert( false !== strpos( $estimate_src, 'var estimate_hours_standard   
 wpcable_assert( false !== strpos( $estimate_src, 'id="optimistic_estimate"' ), 'estimate inputs preserved' );
 
 $schema = file_get_contents( WPCABLE_TEST_ROOT . '/wp-codeable.php' );
-wpcable_assert( false !== strpos( $schema, '0.0.5' ), 'additive schema version 0.0.5' );
+wpcable_assert( false !== strpos( $schema, '0.0.6' ), 'additive schema version 0.0.6' );
 wpcable_assert( false !== strpos( $schema, 'description_text' ), 'description_text column additive' );
 wpcable_assert( false !== strpos( $schema, 'comments_json' ), 'comments_json column additive' );
 

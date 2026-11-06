@@ -8,7 +8,7 @@
 require_once WPCABLE_TEST_ROOT . '/functions/admin-page.php';
 
 $php = file_get_contents( WPCABLE_TEST_ROOT . '/wp-codeable.php' );
-wpcable_assert( false !== strpos( $php, 'Version:           0.4.4' ), 'plugin header is 0.4.4' );
+wpcable_assert( false !== strpos( $php, 'Version:           0.4.5' ), 'plugin header is current' );
 
 $stats_src = file_get_contents( WPCABLE_TEST_ROOT . '/functions/admin-page.php' );
 wpcable_assert( false === strpos( $stats_src, 'first-stats-row' ), 'legacy first-stats-row removed from Stats' );
@@ -58,4 +58,3 @@ wpcable_assert( false !== strpos( $pack, 'PLUGIN_ROOT_NAME="expertstatsplugin-ma
 $payload = file_get_contents( WPCABLE_TEST_ROOT . '/functions/task-payload.php' );
 wpcable_assert( false !== strpos( $payload, 'codeable.docs.apiary.io' ), 'payload mapper cites public Apiary docs' );
 wpcable_assert( false === strpos( $payload, 'Official Codeable API docs were not found' ), 'no longer claims docs were not found' );
-wpcable_assert( false !== strpos( $payload, 'does not add those extra HTTP routes' ), '0.4.4 does not add GET /tasks/{id} or comments importer' );

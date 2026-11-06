@@ -841,12 +841,15 @@ function wpcable_workroom_url( $task_id ) {
 }
 
 /**
-/**
+ * History panel for a task row, including account-scoped cache and load flags.
+ *
  * @param array $task Sanitized task.
  * @return array
  */
 function wpcable_task_history_unavailable( $task = array() ) {
-	return wpcable_task_history( $task );
+	return function_exists( 'wpcable_task_history_for_display' )
+		? wpcable_task_history_for_display( $task )
+		: wpcable_task_history( $task );
 }
 
 /**

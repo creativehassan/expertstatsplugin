@@ -20,9 +20,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * `description` field on the individual task. List samples vary: suggestions
  * include `description`; inquiring/in_progress/archive samples do not.
  * Dedicated comments live at GET `/tasks/{id}/comments` in that blueprint.
- * This mapper still only reads keys already on the permitted list object;
- * it does not add those extra HTTP routes (pagination/visibility on comments
- * are internally inconsistent in the blueprint — see docs/APIARY-CODEABLE.md).
+ * This mapper still only reads keys already on the permitted list object.
+ * Opt-in documented GETs are `wpcable_load_task_history_run()` (not this mapper).
  *
  * @param array $task Raw API task object.
  * @return array {present, key, text}
@@ -114,9 +113,16 @@ function wpcable_payload_normalize_comment( $row ) {
 		$visibility = 'public';
 	}
 
-	$id = 0;
-	if ( isset( $row['id'] ) && is_numeric( $row['id'] ) ) {
-		$id = (int) $row['id'];
+	$id = '';
+	if ( isset( $row['id'] ) && ( is_string( $row['id'] ) || is_numeric( $row['id'] ) ) ) {
+		$id = is_numeric( $row['id'] ) && (string) (int) $row['id'] === (string) $row['id']
+			? (int) $row['id']
+			: (string) $row['id'];
+	}
+
+	$edited = null;
+	if ( array_key_exists( 'edited', $row ) ) {
+		$edited = ! empty( $row['edited'] );
 	}
 
 	return array(
@@ -127,16 +133,15 @@ function wpcable_payload_normalize_comment( $row ) {
 		'private'            => $private,
 		'is_contractors_only'=> $contractors_only,
 		'visibility'         => $visibility,
+		'edited'             => $edited,
 		'created_at'         => isset( $row['created_at'] ) ? (string) $row['created_at'] : ( isset( $row['published_at'] ) ? (string) $row['published_at'] : '' ),
 	);
 }
 
 /**
  * Pull comments from the same task object the list importer already fetches.
- * Does not call GET /task/{id}/comments (that path appears only in a public
- * third-party Chrome extension, not in official Codeable docs and not in this
- * plugin). Completeness of public/private/pagination is unknown unless the
- * payload itself includes those arrays.
+ * Does not itself call remote comment routes. Completeness of public/private
+ * pagination is unknown unless the payload includes those arrays.
  *
  * @param array $task Raw API task object.
  * @return array {present, complete, source, items}
@@ -281,7 +286,12 @@ function wpcable_task_history( $task = array() ) {
 	} elseif ( empty( $items ) ) {
 		$comments['reason'] = __( 'The saved import includes a comments field that was empty.', 'wpcable' );
 	} elseif ( ! $comments_complete ) {
-		$comments['reason'] = __( 'Showing comments that were present on the saved payload. This may not be the full public and private thread, and pagination is unverified.', 'wpcable' );
+		$source = isset( $task['comments_source'] ) ? (string) $task['comments_source'] : '';
+		if ( 0 === strpos( $source, 'GET ' ) ) {
+			$comments['reason'] = __( 'Showing fetched comments. Completeness depends on returned Link / X-Total-Count; this may be a partial page.', 'wpcable' );
+		} else {
+			$comments['reason'] = __( 'Showing comments that were present on the saved payload. This may not be the full public and private thread, and pagination is unverified.', 'wpcable' );
+		}
 	}
 
 	return array(

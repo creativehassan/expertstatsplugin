@@ -516,7 +516,7 @@ class wpcable_api_data {
 				}
 
 				// Persist description/comments only when those keys are already
-				// on this permitted list payload. Does not call GET /task/{id}.
+				// on this permitted list payload. Does not call GET /tasks/{id}.
 				$new_task = wpcable_apply_payload_history( $new_task, $task );
 
 				if ( ! empty( $task['last_event']['type']) && 'create_vault' === $task['last_event']['type']) {

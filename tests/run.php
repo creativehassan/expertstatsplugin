@@ -49,6 +49,9 @@ require __DIR__ . '/test-package-zip.php';
 echo "\n7e) 0.4.4 QA: one Stats overview, one import-health, no legacy duplicate\n";
 require __DIR__ . '/test-qa-044.php';
 
+echo "\n7f) 0.4.5 QA: documented GET /tasks/{id} + comments cache\n";
+require __DIR__ . '/test-qa-045.php';
+
 echo "\n8) Production JS integration (jsdom + jQuery, no Codeable network)\n";
 $js_dir    = __DIR__ . '/js';
 $js_status = 0;

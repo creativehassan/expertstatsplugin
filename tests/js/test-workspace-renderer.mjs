@@ -100,6 +100,19 @@ async function run() {
 		await tick(30);
 		const fifty = window.document.querySelectorAll('#wpcable-task-rows tr.wpcable-row-link');
 		check(fifty.length === 30, 'per_page 50 renders all 30 rows');
+
+		window.document.querySelector('#wpcable-task-rows tr.wpcable-row-link').click();
+		await tick(30);
+		const loadBtn = window.document.querySelector('.wpcable-load-history');
+		check(!!loadBtn, 'project drawer shows Load from Codeable (read-only)');
+		if (loadBtn) {
+			loadBtn.click();
+			await tick(30);
+			check(
+				window.__wpcableAjaxLog.some((e) => e.action === 'wpcable_load_task_history'),
+				'Load button posts local WP ajax wpcable_load_task_history (not a Codeable URL)'
+			);
+		}
 	}
 
 	{

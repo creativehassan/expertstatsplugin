@@ -214,6 +214,96 @@ class wpcable_api_calls {
 	}
 
 	/**
+	 * Documented read-only GET on the existing working host (api.codeable.io).
+	 * Does not change host to api.codeable.com, does not follow redirects
+	 * (avoids leaking the Bearer token cross-domain), and never uses the
+	 * undocumented singular-task collection.
+	 *
+	 * @param string $path  Relative path, e.g. tasks/123 or tasks/123/comments.
+	 * @param array  $query Query args (limit/offset for comments).
+	 * @return array {status, body, headers, link, url, error}
+	 */
+	public function get_with_meta( $path, $query = array() ) {
+		$path = ltrim( (string) $path, '/' );
+		$out  = array(
+			'status'  => 0,
+			'body'    => null,
+			'headers' => array(),
+			'link'    => '',
+			'url'     => '',
+			'error'   => '',
+			'path'    => $path,
+		);
+
+		if ( ! preg_match( '#^tasks/[A-Za-z0-9_-]+(/comments(/[A-Za-z0-9_-]+)?)?$#', $path ) ) {
+			$out['error']  = 'path_not_allowlisted';
+			$out['status'] = 0;
+			return $out;
+		}
+
+		$full_url   = 'https://api.codeable.io/' . $path;
+		$out['url'] = $full_url;
+
+		$pre = apply_filters( 'wpcable_pre_http_get', null, $path, $query, $full_url );
+		if ( is_array( $pre ) ) {
+			return array_merge( $out, $pre, array( 'path' => $path, 'url' => isset( $pre['url'] ) ? $pre['url'] : $full_url ) );
+		}
+
+		if ( ! $this->auth_token_known() ) {
+			$out['error']  = 'disconnected';
+			$out['status'] = 0;
+			return $out;
+		}
+
+		$request_args = array(
+			'method'      => 'GET',
+			'redirection' => 0,
+			'timeout'     => 30,
+			'headers'     => array(
+				'Authorization' => 'Bearer ' . $this->auth_token,
+			),
+		);
+
+		$url = $full_url;
+		if ( ! empty( $query ) && is_array( $query ) ) {
+			$url = add_query_arg( $query, $url );
+		}
+		$out['url'] = $url;
+
+		$response = wp_remote_request( $url, $request_args );
+		if ( is_wp_error( $response ) ) {
+			$out['error']  = $response->get_error_message();
+			$out['status'] = 0;
+			return $out;
+		}
+
+		$out['status'] = (int) wp_remote_retrieve_response_code( $response );
+		$raw_body      = wp_remote_retrieve_body( $response );
+		$decoded       = json_decode( $raw_body, true );
+		$out['body']   = ( null === $decoded ) ? $raw_body : $decoded;
+
+		$headers = array();
+		if ( isset( $response['headers'] ) ) {
+			if ( is_object( $response['headers'] ) && method_exists( $response['headers'], 'getAll' ) ) {
+				$headers = $response['headers']->getAll();
+			} elseif ( is_array( $response['headers'] ) ) {
+				$headers = $response['headers'];
+			}
+		}
+		$out['headers'] = $headers;
+		$link           = '';
+		foreach ( array( 'link', 'Link' ) as $hk ) {
+			if ( ! empty( $headers[ $hk ] ) ) {
+				$link = is_array( $headers[ $hk ] ) ? implode( ', ', $headers[ $hk ] ) : (string) $headers[ $hk ];
+				break;
+			}
+		}
+		$out['link'] = $link;
+
+		return $out;
+	}
+
+	/**
 	 * Set off an API call too api.codeable.com and return the result as array.
 	 *
 	 * @param  string $url     API endpoint.

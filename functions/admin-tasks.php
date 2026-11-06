@@ -115,12 +115,37 @@ function wpcable_ajax_get_task() {
 			'client'        => $client,
 			'suggestions'   => $cues,
 			'unsupported'   => wpcable_opportunities::unsupported_signals(),
-			'history'       => wpcable_task_history_unavailable( $task ),
+			'history'       => wpcable_task_history_for_display( $task ),
 			'read_only_api' => true,
+			'can_load'      => wpcable_sync_allowed(),
 		)
 	);
 }
 add_action( 'wp_ajax_wpcable_get_task', 'wpcable_ajax_get_task' );
+
+/**
+ * Opt-in documented GET /tasks/{id} + comments. Local WP ajax only.
+ * Never runs on page view. Never mutates Codeable.
+ */
+function wpcable_ajax_load_task_history() {
+	if ( ! wpcable_ajax_can_manage() ) {
+		wp_send_json_error( array( 'message' => 'forbidden', 'state' => 'FORBIDDEN' ), 403 );
+	}
+
+	$task_id = isset( $_REQUEST['task_id'] ) ? (int) $_REQUEST['task_id'] : 0;
+	$out     = wpcable_load_task_history_run( $task_id );
+
+	if ( 'not_found' === $out['state'] ) {
+		wp_send_json_error( $out, 404 );
+	}
+
+	if ( $out['ok'] ) {
+		wp_send_json_success( $out );
+	}
+
+	wp_send_json_error( $out );
+}
+add_action( 'wp_ajax_wpcable_load_task_history', 'wpcable_ajax_load_task_history' );
 
 /**
  * Legacy full-list reload kept for the hourly sync refresh on other screens.

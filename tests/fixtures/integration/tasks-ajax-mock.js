@@ -43,7 +43,12 @@
 			lostHeuristic: 'Lost is a local heuristic',
 			notesLocal: 'Local notes only.',
 			suggested: 'Suggested from local records.',
-			unavailableHistory: 'Unavailable'
+			unavailableHistory: 'Unavailable',
+			loadHistory: 'Load from Codeable (read-only)',
+			loadHistoryDisconnected: 'Load from Codeable is off while disconnected. Saved data stays visible.',
+			historyUnavailable: 'Not in the saved task-list payload.',
+			commentsUnavailable: 'Not in the saved task-list payload.',
+			notesNotComments: 'Local notes below are yours in WordPress.'
 		}
 	};
 
@@ -126,9 +131,46 @@
 				success: true,
 				data: {
 					task: task,
-					history: {},
+					history: {
+						can_load: true,
+						load_label: 'Load from Codeable (read-only)',
+						load_help: 'Uses GET /tasks/{id} and GET /tasks/{id}/comments.',
+						description: { available: false, reason: 'Not in the saved task-list payload.' },
+						comments: { available: false, items: [], reason: 'Not in the saved task-list payload.' },
+						workroom: { url: task ? task.workroom_url : '', label: 'Open workroom (read-only)' }
+					},
 					suggestions: [],
-					unsupported: []
+					unsupported: [],
+					can_load: true,
+					read_only_api: true
+				}
+			};
+		}
+		if (data.action === 'wpcable_load_task_history') {
+			return {
+				success: true,
+				data: {
+					ok: true,
+					saved: true,
+					state: 'partial',
+					message: 'Saved a partial comments page. More may exist.',
+					history: {
+						can_load: true,
+						description: { available: true, text: 'Fixture description from documented GET.' },
+						comments: {
+							available: true,
+							complete: false,
+							items: [
+								{
+									id: 'a7839f0e2277d74238b3',
+									body: 'I can start tomorrow. Let me know!',
+									author: 'Supriyadi Widodo',
+									visibility: 'unknown',
+									created_at: '2014-01-12'
+								}
+							]
+						}
+					}
 				}
 			};
 		}

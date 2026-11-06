@@ -566,6 +566,15 @@
 	padding-left: 10px;
 }
 
+.wpcable-comment--unknown {
+	border-left: 3px solid #c3c4c7;
+	padding-left: 10px;
+}
+
+.wpcable-load-history {
+	margin-top: 8px;
+}
+
 .wpcable-filter-count {
 	font-weight: 400;
 	color: var(--wpcable-muted);

@@ -1,5 +1,11 @@
 ### Changelog
 
+*0.4.5 (2026-11-06)*
+* Opt-in **Load from Codeable (read-only)** on an imported project drawer. Local WP ajax (`wpcable_load_task_history`, `manage_options` + nonce) calls only documented `GET /tasks/{id}` then `GET /tasks/{id}/comments?limit=&offset=` on the existing authorized account (`api.codeable.io`, redirects off). Never singular `/task/`, never POST/PUT/PATCH/DELETE, never a comments composer, never bulk backfill on page views.
+* Caches successful description + comments locally (schema **0.0.6** `history_account_id` / `history_meta_json`) with source time, account stamp, and provenance. Missing `private` stays **unknown**, not public. 403 is respected and does not overwrite a good cache. Full comments page with no `Link rel=next` is **partial**, not complete. Cross-host or `/v1` Link URLs are not followed (no token leak).
+* Account-scoped: a different connected Codeable id does not see that cache; a disconnected owner can still view saved authorized-account data. Attachments/reviews endpoints are documented and **out of scope**.
+* Stats 0.4.4 cleanup is unchanged. ZIP root remains `expertstatsplugin-master/`. Apiary lastUpdated **2015-03-02** — production may differ; see `docs/APIARY-CODEABLE.md`.
+
 *0.4.4 (2026-11-06)*
 * Stats: remove the legacy profile / Balance / Total Revenue row that duplicated the new overview. One identity/scope summary (`#wpcable-stats-overview`). Genuine transaction charts, conversions, averages, and the clients-by-revenue table still render when money is imported; empty finance stays Unavailable, not $0.
 * One import-health footer (`#wpcable-import-health` via `wpcable_app_close` only). Do not WP-uninstall a leftover versioned duplicate folder.

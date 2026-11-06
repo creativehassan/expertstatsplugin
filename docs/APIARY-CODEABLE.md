@@ -1,19 +1,17 @@
 # Codeable public API docs (Apiary)
 
-Source (read-only documentation, no live API calls from this plugin release):
+Source (read-only documentation, no live API calls from the cloud agent):
 
 - HTML docs: https://codeable.docs.apiary.io/
 - Raw API Blueprint: https://codeable.docs.apiary.io/api-description-document (`codeable.apib`)
 - Same blueprint: https://jsapi.apiary.io/apis/codeable.apib
 - Blueprint `HOST:` line: `https://api.codeable.com/`
 - Link-header examples in the same file use `https://api.codeable.io`
-- This plugin’s existing client calls `https://api.codeable.io/` (`classes/api_calls.php`)
+- Blueprint **lastUpdated: 2015-03-02**. This is **not** a guarantee of current production behavior.
+- Documented **current version header**: `X-API-Version: 2014-01-17` (text also says current version is **2014-02-14**). Changelog section is empty.
+- This plugin’s existing client calls `https://api.codeable.io/` (`classes/api_calls.php`) and does **not** switch to `api.codeable.com`. Documented GETs use the same host and Bearer token, with `redirection => 0` so a 3xx cannot leak the token cross-domain.
 
-Documented **current version header**: `X-API-Version: 2014-01-17` (text also says current version is **2014-02-14**). Changelog section is empty.
-
-This 0.4.4 patch does **not** add new HTTP routes. The existing list importer stays `GET users/me/tasks/{filter}` and `users/me/hidden_tasks/`. Dedicated description/comments retrieval waits until pagination and visibility are confirmed (blueprint contradictions below). Coordinator extract may supersede this note.
-
-## Documented read paths for project description
+## Documented read paths used in 0.4.5
 
 ### `GET /tasks/{id}` — Individual Tasks
 
@@ -25,58 +23,56 @@ Blueprint section: `### Individual Tasks [/tasks/{id}]` → `#### Display a task
 - 403: “Clients who are not task owners.”
 - No query parameters documented on this GET.
 
-### List payloads (description is not uniform)
-
-| Blueprint resource | GET sample includes `description`? |
-| --- | --- |
-| `/users/me/tasks/suggestions` | Yes (`"description": "Website designer…"`) plus `"comments_count": 10` |
-| `/users/me/tasks/inquiring` | No — sample is `id`, `title`, `price`, `last_event`, `state` |
-| `/users/me/tasks/in_progress` | No (same shape as inquiring) |
-| `/users/me/tasks/requesting_estimate` | No |
-| `/users/me/tasks/archive` | No |
-| `/users/me/tasks/favourites` | No |
-| `/tasks` public collection | Yes, each listed task has `description` and `comments_count` |
-
-This plugin’s `tasks_page()` filters (`pending`, `active`, `archived`, `preferred`, `hidden_tasks`) are **not named** in the blueprint’s `/users/me/tasks/…` list. Do not treat a missing `description` on one saved row as proof the field is absent from every list.
-
-### `GET /tasks` public list
-
-`### Tasks Collection [/tasks]` → `#### List all public Tasks [GET]`.
-
-Parameters: `page` (required), optional `category`, `budget`, `urgency`, `special`. Pagination headers: `Link`, `X-Total-Count`, `X-Page-Count`, `X-Records-Per-Page` (20 per page in the example).
-
-## Documented read paths for comments
+This plugin maps `description` (and fallback keys already used by the list mapper). It does not replace the local title/row identity.
 
 ### `GET /tasks/{id}/comments` — List comments
 
 Blueprint section: `### Comments [/tasks/{id}/comments]` → `#### List comments for a particular task [GET]`.
 
 - Auth: `Authorization: Bearer …`
-- Visibility copy (resource intro): “Comments with private set to *true* will only be seen by the Client (task owner) and assigned Contractor.”
-- **Parameters (as written):** `limit` (required, number, example `10`) “Return *n* records”; `offset` (required, number, example `20`) “Skip *n* records”.
-- **Response headers** document `Link` with `?page=2` / `?page=1` / `?page=3`, plus `X-Total-Count`, `X-Page-Count`, `X-Records-Per-Page: 20`. One `rel="next"` example uses `/v1/tasks/…/comments?page=3` while the others omit `/v1`.
-- 200 example items: `id`, `text`, `user`, `edited`, `published_at`. The list example does **not** include a `private` field.
-- 204 / 401 / 403 (“Client who doesn't own task.”) / 404.
+- Visibility copy: “Comments with private set to *true* will only be seen by the Client (task owner) and assigned Contractor.”
+- **Parameters (as written):** `limit` (required) and `offset` (required).
+- **Response headers** document `Link` with `?page=2` / `?page=1`, plus `X-Total-Count`. One `rel="next"` example uses `/v1/tasks/…/comments?page=3`.
+- 200 list example items: `id`, `text`, `user{id,full_name,avatar}`, `edited`, `published_at`. The list example does **not** include `private`.
+- 204 / 401 / 403 / 404.
 
-**Not confirmed (do not guess a client):** whether callers should send `limit`+`offset`, `page`, or both; whether list items include `private`; whether `/v1` is a real prefix.
+**How 0.4.5 handles the limit/offset vs Link `page` contradiction:** send only documented `limit` + `offset`. Inspect returned `Link` as metadata. Do not probe `?page=` as an alternate route. Treat `rel=next` as “another page exists” and continue with `offset += limit` **only** when the Link host is `api.codeable.io` and the path is exactly `/tasks/{id}/comments`. Other hosts and `/v1` prefixes are not followed. A full page with no next Link is **partial**, not complete.
 
-`is_contractors_only` does **not** appear in this blueprint (that name was from a third-party Chrome extension, not this document).
+**Visibility:** missing `private` → `unknown`, not public. `private: true` → private. `private: false` → public. Never claim all private comments are available after a 403.
 
 ### `GET /tasks/{id}/comments/{comment_id}` — Individual comment
 
-200 example: `id`, `text`, `edited`, `published_at` (no `private` in the example). 403 copy distinguishes “comment is public” vs “comment is private”.
+Allowlisted on the HTTP helper (documented GET). **Not** called automatically by the per-project loader (list GET is the load path).
 
-### Mutations (documented; this plugin stays read-only)
+## List payloads (description is not uniform)
 
-- `POST /tasks/{id}/comments` — body `{ "text": "…" }`; 201 example includes `"private": false`.
-- `PUT /tasks/{id}/comments/{comment_id}` — update text.
-- `POST /tasks`, `PUT /tasks/{id}`, sub-task create, etc.
+| Blueprint resource | GET sample includes `description`? |
+| --- | --- |
+| `/users/me/tasks/suggestions` | Yes |
+| `/users/me/tasks/inquiring` | No |
+| `/users/me/tasks/archive` | No |
+| `/tasks` public collection | Yes |
 
-Do not call these from Expert Stats.
+The list importer (`users/me/tasks/{filter}`) still maps description/comments only when those keys are already on the list object. Missing on a saved row is unverified, not empty.
 
-## What 0.4.4 does with this
+## Mutations (documented; this plugin stays read-only)
 
-- Stops claiming “no public documentation”.
-- Does **not** add `GET /tasks/{id}` or `GET /tasks/{id}/comments` until pagination (`limit`/`offset` vs `page`) and list visibility (`private` on GET) are confirmed.
-- Keeps mapping `description` / comments only if those keys are already on the existing list payload.
-- Live missing description/comments on one saved record remains **unverified** for the plugin’s actual filter paths, not proof of absence.
+- `POST /tasks/{id}/comments`, `PUT /tasks/{id}/comments/{comment_id}`, `POST /tasks`, `PUT /tasks/{id}`, etc.
+
+Do not call these from Expert Stats. No comments composer.
+
+## Out of scope this phase
+
+- Attachments endpoints
+- Reviews endpoints
+- Public `GET /tasks` collection
+- Switching host to `api.codeable.com`
+- Undocumented singular `/task/{id}` (third-party Chrome extension)
+
+## What 0.4.5 does with this
+
+- Adds opt-in **Load from Codeable (read-only)** for one imported `task_id` at a time.
+- Uses existing authorized account abstraction. Does not mint or extract credentials.
+- Caches successful bodies locally with account stamp and provenance.
+- Respects 403; does not overwrite good cache on errors.
+- Does not auto-backfill on page views.

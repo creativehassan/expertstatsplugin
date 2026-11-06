@@ -161,6 +161,17 @@
 				'</a></p>';
 		}
 		html += '<p class="description">' + esc(cfg.i18n.notesNotComments) + '</p>';
+		if (history.can_load) {
+			html +=
+				'<p><button type="button" class="button button-secondary wpcable-load-history">' +
+				esc(history.load_label || cfg.i18n.loadHistory || 'Load from Codeable (read-only)') +
+				'</button></p>';
+			if (history.load_help) {
+				html += '<p class="description">' + esc(history.load_help) + '</p>';
+			}
+		} else {
+			html += '<p class="description">' + esc(cfg.i18n.loadHistoryDisconnected || 'Load from Codeable is off while disconnected. Saved data stays visible.') + '</p>';
+		}
 		html += '</section>';
 		return html;
 	}
@@ -437,7 +448,7 @@
 			});
 		}
 
-		function openDrawer(taskId) {
+		function openDrawer(taskId, loadNotice) {
 			var $layout = $root.find('.wpcable-workspace-layout');
 			var $drawer = $('#wpcable-task-drawer');
 			var $body = $('#wpcable-task-drawer-body');
@@ -485,6 +496,9 @@
 				}
 				html += '<h3>' + esc('Suggested next step') + '</h3>' + renderSuggestions(parsed.data.suggestions);
 				html += renderUnsupported(parsed.data.unsupported);
+				if (loadNotice) {
+					html = '<p class="notice notice-info">' + esc(loadNotice) + '</p>' + html;
+				}
 				$body.html(html);
 			});
 		}
@@ -547,6 +561,22 @@
 			if (currentTask) {
 				openNotesEditor(currentTask);
 			}
+		});
+
+		$root.on('click', '.wpcable-load-history', function () {
+			if (!currentTask || !currentTask.task_id) {
+				return;
+			}
+			var $btn = $(this);
+			$btn.prop('disabled', true);
+			ajax('wpcable_load_task_history', { task_id: currentTask.task_id }).done(function (res) {
+				var parsed = unwrapWpAjax(res);
+				var payload = parsed.data || {};
+				var notice = payload.message || parsed.message || '';
+				openDrawer(currentTask.task_id, notice);
+			}).fail(function () {
+				$btn.prop('disabled', false);
+			});
 		});
 
 		function openNotes(taskId) {

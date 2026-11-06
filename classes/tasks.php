@@ -591,7 +591,9 @@ class wpcable_tasks {
 		$task['comments_complete']   = ! empty( $task['comments_complete'] );
 		$task['comments_source']     = isset( $task['comments_source'] ) ? (string) $task['comments_source'] : '';
 		$task['comments_json']       = isset( $task['comments_json'] ) ? (string) $task['comments_json'] : '';
-		$task['history']             = wpcable_task_history( $task );
+		$task['history_account_id']  = isset( $task['history_account_id'] ) ? (string) $task['history_account_id'] : '';
+		$task['history_meta_json']   = isset( $task['history_meta_json'] ) ? (string) $task['history_meta_json'] : '';
+		$task['history']             = wpcable_task_history_for_display( $task );
 
 		$task['last_activity_date'] = '';
 		$task['last_activity_time'] = '';

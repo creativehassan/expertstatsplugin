@@ -5,7 +5,7 @@
  * Plugin Name:       Codeable - Expert's Stats
  * Plugin URI:        https://github.com/codeablehq/blackbook/wiki/Expert-Stats-Plugin
  * Description:       Get your Codeable data
- * Version:           0.4.4
+ * Version:           0.4.5
  * Author:            Spyros Vlachopoulos
  * Contributors:      Panagiotis Synetos, John Leskas, Justin Frydman, Jonathan Bossenger, Rob Scott, Philipp Stracker, Peter Kakoma
  * Author URI:        https://codeable.io/developers/spyros-vlachopoulos/
@@ -39,6 +39,7 @@ define( 'WPCABLE_URI', rtrim( plugin_dir_url( __FILE__ ), '/' ) );
 require_once WPCABLE_CLASSES_DIR . '/object_cache.php';
 require_once WPCABLE_FUNCTIONS_DIR . '/helpers.php';
 require_once WPCABLE_FUNCTIONS_DIR . '/task-payload.php';
+require_once WPCABLE_FUNCTIONS_DIR . '/task-detail.php';
 require_once WPCABLE_FUNCTIONS_DIR . '/admin-chrome.php';
 require_once WPCABLE_CLASSES_DIR . '/import_health.php';
 require_once WPCABLE_CLASSES_DIR . '/estimate.php';
@@ -173,7 +174,7 @@ add_action( 'wp_ajax_wpcable_sync_process', 'wpcable_sync_process' );
 function wpcable_install() {
 	global $wpdb;
 
-	$wpcable_db_version = '0.0.5';
+	$wpcable_db_version = '0.0.6';
 
 	if ( get_option( 'wpcable_transcactions_version' ) !== $wpcable_db_version ) {
 
@@ -271,6 +272,8 @@ function wpcable_install() {
 			`comments_present` tinyint(1) DEFAULT 0 NOT NULL,
 			`comments_complete` tinyint(1) DEFAULT 0 NOT NULL,
 			`comments_source` varchar(128) DEFAULT '' NOT NULL,
+			`history_account_id` varchar(64) DEFAULT '' NOT NULL,
+			`history_meta_json` longtext DEFAULT NULL,
 			PRIMARY KEY  (task_id),
 			KEY client_id (client_id),
 			KEY state (state),
@@ -318,7 +321,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcablecss',
 		plugins_url( 'assets/css/wpcable.css', __FILE__ ),
 		[],
-		'0.4.4'
+		'0.4.5'
 	);
 	wp_enqueue_style(
 		'ratycss',
@@ -381,7 +384,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcablejs',
 		plugins_url( 'assets/js/wpcable.js', __FILE__ ),
 		[ 'wp-util' ],
-		'0.4.4',
+		'0.4.5',
 		true
 	);
 
@@ -389,7 +392,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcable-workspace',
 		plugins_url( 'assets/css/wpcable-workspace.css', __FILE__ ),
 		[ 'wpcablecss' ],
-		'0.4.4'
+		'0.4.5'
 	);
 
 	$workspace_hooks = [
@@ -403,7 +406,7 @@ function wpcable_admin_scripts( $hook ) {
 			'wpcable-workspace',
 			plugins_url( 'assets/js/wpcable-workspace.js', __FILE__ ),
 			[ 'jquery', 'wp-util', 'simplemde', 'wpcablejs' ],
-			'0.4.4',
+			'0.4.5',
 			true
 		);
 
@@ -433,6 +436,8 @@ function wpcable_admin_scripts( $hook ) {
 					'historyUnavailable'  => __( 'Not in the saved task-list payload. This is not an empty description, and it is not proof the API omits the field.', 'wpcable' ),
 					'commentsUnavailable' => __( 'Not in the saved task-list payload. This is not an empty thread. Pagination of public/private comments is unverified.', 'wpcable' ),
 					'notesNotComments'    => __( 'Local notes below are yours in WordPress. They are not Codeable comments.', 'wpcable' ),
+					'loadHistory'         => __( 'Load from Codeable (read-only)', 'wpcable' ),
+					'loadHistoryDisconnected' => __( 'Load from Codeable is off while disconnected. Saved data stays visible.', 'wpcable' ),
 				],
 				'kpis'    => [
 					'profileCompleted' => wpcable_account_detail( $account, 'completed_tasks_count', null ),
