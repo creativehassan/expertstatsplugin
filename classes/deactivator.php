@@ -33,14 +33,12 @@ class WpCable_deactivator {
 	 */
 	private static function remove_cronjobs() {
 
-		// find out when the last event was scheduled
 		$timestamp = wp_next_scheduled( 'wpcable_cronjob' );
-
-		// unschedule previous event if any
-		wp_unschedule_event( $timestamp, 'wpcable_cronjob' );
-
-		// clear cron upon plugin deactivation
+		if ( $timestamp ) {
+			wp_unschedule_event( $timestamp, 'wpcable_cronjob' );
+		}
 		wp_clear_scheduled_hook( 'wpcable_cronjob' );
+		wp_clear_scheduled_hook( 'wpcable_history_backfill_tick' );
 	}
 
 }

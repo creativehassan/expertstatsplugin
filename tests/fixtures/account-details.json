@@ -1,0 +1,24 @@
+{
+  "nested_avatar": {
+    "id": 4242,
+    "first_name": "Fixture",
+    "last_name": "Expert",
+    "role": "contractor",
+    "completed_tasks_count": 911,
+    "tasks_count": 600,
+    "avatar": {
+      "large_url": "https://example.test/large.png",
+      "medium_url": "https://example.test/medium.png"
+    },
+    "stats": {
+      "avg_rating": 4.9,
+      "estimated_completed_conversion_1_month": 0.2
+    }
+  },
+  "string_avatar": {
+    "id": 4242,
+    "first_name": "Fixture",
+    "last_name": "Expert",
+    "avatar": "https://example.test/plain.png"
+  }
+}

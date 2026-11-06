@@ -1,5 +1,4 @@
-<div class="wrap">
-		<h1>PERT Estimator</h1>
+<div class="wpcable-estimate">
 		<form id="estimator" class="metabox-holder">
 			<div class="estimate-row">
 				<div id="estimates" class="postbox">
@@ -106,9 +105,8 @@
 		</form>
 	</div>
 
-	<?php codeable_last_fetch_info(); ?>
-
 	<script type="text/javascript">
+		/* Formulas must stay aligned with classes/estimate.php (wpcable_estimate). */
 		jQuery(document).ready(function($) {
 			function round(value, step) {
 				step || (step = 1.0);

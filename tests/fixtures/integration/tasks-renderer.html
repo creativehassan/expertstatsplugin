@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>INTEGRATION — production wpcable-workspace.js Tasks renderer</title>
+<link rel="stylesheet" href="../../../assets/css/wpcable-workspace.css" />
+<link rel="stylesheet" href="../ui/_shell.css" />
+<style>
+table.widefat{width:100%;border-collapse:collapse;background:#fff}
+table.widefat th,table.widefat td{border-bottom:1px solid #dcdcde;padding:8px;text-align:left;font-size:13px}
+.button{display:inline-block;padding:4px 10px;border:1px solid #2271b1;background:#f6f7f7;border-radius:3px;font-size:13px;cursor:pointer}
+.button-primary{background:#2271b1;color:#fff}
+.wpcable-page-buttons{display:inline-block;margin-left:12px}
+</style>
+</head>
+<body>
+<div class="wp-layout">
+  <main class="wp-main">
+    <div class="banner"><strong>INTEGRATION FIXTURE</strong> — production workspace.js + mocked WP ajax envelope. Not live Codeable.</div>
+    <div class="wrap wpcable_wrap wpcable-workspace wpcable-workspace--tasks" data-workspace="tasks">
+      <h1>Projects workspace</h1>
+      <div class="wpcable-kpi-row">
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Imported rows</span><span class="wpcable-kpi__value" data-kpi="imported">30</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Published (filter)</span><span class="wpcable-kpi__value" data-kpi="published">26</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Completed (filter)</span><span class="wpcable-kpi__value" data-kpi="completed">2</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Lost (filter)</span><span class="wpcable-kpi__value" data-kpi="lost">1</span></div>
+      </div>
+      <div class="wpcable-toolbar">
+        <div class="wpcable-filters">
+          <button type="button" class="button button-primary wpcable-filter is-active" data-state="all" data-filter-key="all">All</button>
+          <button type="button" class="button wpcable-filter" data-state="published" data-filter-key="published">Published</button>
+          <button type="button" class="button wpcable-filter" data-completed="1" data-filter-key="completed">Completed</button>
+          <button type="button" class="button wpcable-filter" data-lost="1" data-filter-key="lost">Lost</button>
+        </div>
+        <div class="wpcable-toolbar__right">
+          <input type="search" id="wpcable-task-search" class="wpcable-search" placeholder="Search…" />
+          <select id="wpcable-per-page">
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+      </div>
+      <p class="wpcable-sync-banner" id="wpcable-sync-banner" hidden>A read-only Refresh is in progress.</p>
+      <div class="wpcable-workspace-layout">
+        <div class="wpcable-table-card">
+          <table class="widefat striped wpcable-tasks-table">
+            <thead>
+              <tr>
+                <th>Client</th><th>Last activity</th><th>Project</th><th>Value</th><th>Title</th><th>Status / flags</th><th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="wpcable-task-rows">
+              <tr class="wpcable-empty-row"><td colspan="7">Loading…</td></tr>
+            </tbody>
+          </table>
+          <div class="wpcable-pagination" id="wpcable-task-pagination"></div>
+        </div>
+        <aside class="wpcable-drawer" id="wpcable-task-drawer" hidden>
+          <div class="wpcable-drawer__inner">
+            <button type="button" class="button-link wpcable-drawer__close">Close</button>
+            <div id="wpcable-task-drawer-body"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="../vendor/jquery.min.js"></script>
+<script src="tasks-ajax-mock.js"></script>
+<script src="../../../assets/js/wpcable-workspace.js"></script>
+</body>
+</html>

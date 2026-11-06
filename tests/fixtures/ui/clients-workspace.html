@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>SYNTHETIC FIXTURE — Clients</title>
+<link rel="stylesheet" href="../../../assets/css/wpcable-workspace.css" />
+<link rel="stylesheet" href="_shell.css" />
+<style>
+table.widefat{width:100%;border-collapse:collapse;background:#fff}
+table.widefat th,table.widefat td{border-bottom:1px solid #dcdcde;padding:8px;text-align:left;font-size:13px}
+.button{display:inline-block;padding:4px 10px;border:1px solid #2271b1;background:#f6f7f7;border-radius:3px;font-size:13px}
+.button-primary{background:#2271b1;color:#fff}
+</style>
+</head>
+<body>
+<div class="wp-layout">
+  <nav class="wp-sidebar">
+    <h1>Codeable Stats</h1>
+    <a href="stats-empty.html">Stats</a>
+    <a class="is-current" href="clients-workspace.html">Clients</a>
+    <a href="tasks-workspace.html">Tasks</a>
+    <a href="opportunities.html">Opportunities</a>
+    <a href="#">Estimate</a>
+    <a href="#">Settings</a>
+  </nav>
+  <main class="wp-main">
+    <div class="banner"><strong>SYNTHETIC FIXTURE</strong> — Fixture Client Alpha / Beta are offline test names, not real people.</div>
+    <div class="wrap wpcable_wrap wpcable-workspace wpcable-workspace--clients">
+      <h1>Clients</h1>
+      <p class="wpcable-lede">Every row is a real client_id from imported projects. Nothing here is a fabricated lead. Financial charts stay hidden until money transactions import.</p>
+      <div class="wpcable-kpi-row">
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Expert profile</span><span class="wpcable-kpi__value">Fixture Expert</span><span class="wpcable-kpi__meta">contractor · profile completed 911 · profile tasks_count 600</span></div>
+        <div class="wpcable-kpi"><span class="wpcable-kpi__label">Imported projects</span><span class="wpcable-kpi__value">30</span><span class="wpcable-kpi__meta">Local database · Tasks page scope</span></div>
+        <div class="wpcable-kpi wpcable-kpi--unavailable"><span class="wpcable-kpi__label">Financial import</span><span class="wpcable-kpi__value">Unavailable</span><span class="wpcable-kpi__meta">Not $0. Hide revenue until transactions succeed.</span></div>
+      </div>
+      <div class="wpcable-workspace-layout wpcable-workspace-layout--split">
+        <section class="wpcable-table-card">
+          <div class="wpcable-toolbar">
+            <div class="wpcable-filters">
+              <span class="button button-primary">All</span>
+              <span class="button">Completed ≥ 1</span>
+              <span class="button">Preferred</span>
+              <span class="button">Stale &gt; 180d</span>
+              <span class="button">Lost only</span>
+            </div>
+          </div>
+          <table class="widefat striped">
+            <thead><tr><th>Client</th><th>Projects</th><th>Flags</th><th>Last activity</th></tr></thead>
+            <tbody>
+              <tr><td class="wpcable-client-cell"><img class="wpcable-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%232271b1'/%3E%3C/svg%3E" alt="" width="32" height="32" /><span>Fixture Client Alpha<div class="description">client · 101</div></span></td><td>3</td><td>preferred · completed 2</td><td>200d ago</td></tr>
+              <tr><td class="wpcable-client-cell"><img class="wpcable-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='800'%3E%3Crect width='800' height='800' fill='%23d63638'/%3E%3C/svg%3E" alt="" width="32" height="32" /><span>Fixture Client Beta<div class="description">client · 202</div></span></td><td>27</td><td>lost (local) 1</td><td>—</td></tr>
+              <tr><td class="wpcable-client-cell"><img class="wpcable-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='1200'%3E%3Crect width='1200' height='1200' fill='%2300a32a'/%3E%3C/svg%3E" alt="" width="32" height="32" /><span>Fixture Sentinel Client<div class="description">client · 303 · invalid last_activity</div></span></td><td>1</td><td>completed 1</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <aside class="wpcable-drawer wpcable-drawer--static">
+          <div class="wpcable-drawer__inner">
+            <h2>Fixture Client Alpha</h2>
+            <p class="description">client_id 101 · client</p>
+            <p><strong>Preferred contractor:</strong> Yes (imported flag)</p>
+            <p><strong>Projects:</strong> 3 · completed 2</p>
+            <div class="wpcable-callout wpcable-callout--warn"><p>Financial revenue is blocked until money transactions import successfully. Missing is not $0.</p></div>
+            <h3>Linked projects</h3>
+            <table class="widefat striped"><thead><tr><th>ID</th><th>Title</th><th>State</th><th>Flag</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>#1</td><td>Alpha site rebuild</td><td>completed</td><td>completed</td><td>$1500</td></tr>
+              <tr><td>#2</td><td>Alpha maintenance</td><td>completed</td><td>completed</td><td>$800</td></tr>
+              <tr><td>#3</td><td>Alpha new idea</td><td>published</td><td>—</td><td>—</td></tr>
+            </tbody></table>
+            <h3>Opportunity cues</h3>
+            <p>Completed-project follow-up <span class="wpcable-badge">MEDIUM</span> — Suggested from local records. Not a confirmed client need.</p>
+            <div class="wpcable-evidence">
+              <h3>Available now</h3><ul><li>Project title, state, kind, and flags</li><li>Preferred flag</li><li>Local notes</li></ul>
+              <h3>Not verified</h3><ul><li>Workroom chat threads</li><li>Client website URL</li><li>Whether another expert was hired globally</li></ul>
+            </div>
+            <div class="wpcable-draft"><p><strong>Review only — no auto-send, and no Codeable write.</strong></p>
+            <p><em>Subject:</em> Fixture Client Alpha — check-in</p>
+            <textarea readonly>Hi Fixture Client Alpha,
+
+I was looking back at “Alpha site rebuild” in my local records and wanted to see whether anything new has come up.
+
+This draft was generated from imported project fields only. It has not been sent.</textarea></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

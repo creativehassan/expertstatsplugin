@@ -1,5 +1,77 @@
 ### Changelog
 
+*0.4.9 (2026-11-06)*
+* Live 163186 next Link is root-relative `</tasks/163186/comments?page=2>` with `X-Total-Count: 674`, `X-Records-Per-Page: 50`, `X-Page-Count: 14`. That documented path is now resolved onto `api.codeable.io` with a strict integer `page` (same-host Bearer token). Limit/offset from the first GET is not reused, so page 2 cannot duplicate page 1.
+* Still rejected: scheme-relative `//host`, userinfo, fragments, `..` / percent-encoding, path-relative (no leading `/`), mismatched task ids, `/v1`, undocumented paths, arbitrary hosts.
+* Drawer shows `N of 674` using those paging headers. Manual **Load more** and resumable bulk both walk 14 pages to 674 unique ids, then evidence-backed complete. Bulk stays idle until started.
+* Lean ZIP, root `expertstatsplugin-master/`. Stats / Estimate unchanged.
+
+*0.4.8 (2026-11-06)*
+* Live comments list on 163186 is a bare 50-item array: `id`, `task_id`, `user_id`, `text`, `is_private`, `created_at`, `updated_at`, `is_contractors_only`, `is_from_email`. **Visibility uses `is_private`**. `is_contractors_only` stays a separate flag (not folded into visibility). No nested `user` — author stays empty unless `user_id` matches the connected account or a saved client (local lookup only; no `GET /users/{id}`).
+* Rejected `Link rel=next` is shown in the drawer (host, path, integer page/limit/offset/per_page, sanitized URI). Secrets, userinfo, and non-paging values are omitted. Allowlist is **not** broadened from a path guess — Load more stays off until the captured route is documented `/tasks/{id}/comments`.
+* Paging headers (`X-Total-Count`, `X-Records-Per-Page`, `X-Page-Count`) are listed when present. Bulk backfill stays unstarted.
+* Lean ZIP, root `expertstatsplugin-master/`. Stats / Estimate unchanged.
+
+*0.4.7 (2026-11-06)*
+* Resumable **comments backfill** (Settings): every imported project’s description and all accessible comments pages, using the same documented read-only GETs as 0.4.6. WP-Cron single events plus the existing hourly hook; the browser does not need to stay open if WP-Cron runs (default WP-Cron still needs site traffic or a real cron to `wp-cron.php`). Pause/resume, account-scoped cursor, no overlap with Refresh or a second tick.
+* Pagination is not capped at 50. Bounded ticks (8 GETs) follow verified `Link rel=next` until an evidence-backed terminal status. Duplicate IDs / repeated queries stop the project as **partial**, not complete. 401 pauses the job; 403 is **denied** (not empty/complete); 429 honors Retry-After / backoff; 5xx retries then records an error. Successful caches are never overwritten on failure.
+* Comment timestamps always display in **PKT** (`Asia/Karachi`) even when the WordPress timezone is empty or misconfigured. Author/visibility still unknown until a live keys-only shape shows those fields.
+* Lean production ZIP omits `tests/`, `docs/screenshots/`, VCS, and nested `node_modules`. Root remains `expertstatsplugin-master/`. Stats / Estimate / drawer Load more unchanged.
+
+*0.4.6 (2026-11-06)*
+* Comments importer: one GET per click. A 50-item page despite `limit=20` stays **partial** (server ignored limit; do not loop offset). Duplicate-ID pages do not inflate the cache.
+* `Link rel=next` on `api.codeable.com` with documented `/tasks/{id}/comments` is **replayed on `api.codeable.io`** (path + page/limit/offset/per_page only). Token is never sent cross-domain. `/v1` and other hosts are not followed. **Load more comments (read-only)** continues from that stored Link.
+* Keys-only response-shape diagnostics (top-level keys, comment keys, nested object key names, sanitized Link). No body text or secrets. Admin drawer `<details>`.
+* Comment times use `DateTime` in the WordPress timezone (PKT when the site is `Asia/Karachi`) without `date_default_timezone_set`. Missing `user` / `private` stay empty / unknown — not invented names or public.
+* Live 1280 resize was not re-run; this patch does not claim it.
+
+*0.4.5 (2026-11-06)*
+* Opt-in **Load from Codeable (read-only)** on an imported project drawer. Local WP ajax (`wpcable_load_task_history`, `manage_options` + nonce) calls only documented `GET /tasks/{id}` then `GET /tasks/{id}/comments?limit=&offset=` on the existing authorized account (`api.codeable.io`, redirects off). Never singular `/task/`, never POST/PUT/PATCH/DELETE, never a comments composer, never bulk backfill on page views.
+* Caches successful description + comments locally (schema **0.0.6** `history_account_id` / `history_meta_json`) with source time, account stamp, and provenance. Missing `private` stays **unknown**, not public. 403 is respected and does not overwrite a good cache. Full comments page with no `Link rel=next` is **partial**, not complete. Cross-host or `/v1` Link URLs are not followed (no token leak).
+* Account-scoped: a different connected Codeable id does not see that cache; a disconnected owner can still view saved authorized-account data. Attachments/reviews endpoints are documented and **out of scope**.
+* Stats 0.4.4 cleanup is unchanged. ZIP root remains `expertstatsplugin-master/`. Apiary lastUpdated **2015-03-02** — production may differ; see `docs/APIARY-CODEABLE.md`.
+
+*0.4.4 (2026-11-06)*
+* Stats: remove the legacy profile / Balance / Total Revenue row that duplicated the new overview. One identity/scope summary (`#wpcable-stats-overview`). Genuine transaction charts, conversions, averages, and the clients-by-revenue table still render when money is imported; empty finance stays Unavailable, not $0.
+* One import-health footer (`#wpcable-import-health` via `wpcable_app_close` only). Do not WP-uninstall a leftover versioned duplicate folder.
+* Page-level horizontal overflow: plugin chrome `overflow-x: hidden` + `minmax(min(100%, …))` grids; wide tables scroll inside `.wpcable-table-scroll` / `.wpcable-table-card`.
+* Public Codeable Apiary docs (https://codeable.docs.apiary.io/) are now cited. Dedicated `GET /tasks/{id}` and `GET /tasks/{id}/comments` are **not** added in this patch — blueprint pagination (`limit`/`offset` vs `page`) and list `private` field are inconsistent. See `docs/APIARY-CODEABLE.md`.
+* ZIP root remains `expertstatsplugin-master/wp-codeable.php` (`./scripts/package-zip.sh`).
+
+*0.4.3 (2026-11-06)*
+* Cohesive six-screen chrome: fluid WP-content width, readable type, Comfortable/Compact density, in-page nav. WP shell / Astra notices untouched.
+* Stats overview from local DB (profile vs imported scopes, clients, opportunity cues, valid-date activity). Missing finances stay unavailable, not $0.
+* Tasks/Clients drawers are progressive (no empty side panel). Opportunities are a ranked comparative list grouped by cue type — still unconfirmed needs.
+* Estimate and Settings restyled; PERT formulas and settings controls unchanged.
+* Disconnected browsing: token absent/expired disables Refresh but keeps and shows saved data. Logout is not Clear all data.
+* Task description and public/private comments: mapped only when already present on the existing `users/me/tasks/{filter}` list payload. Missing key ≠ empty. No new HTTP routes. UI sections render genuine stored records and an honest missing state.
+* Packaging: `scripts/package-zip.sh` always zips `expertstatsplugin-master/wp-codeable.php`. Version is filename/header only, never the archive root. Offline test asserts this. Do not WP-uninstall a duplicate versioned folder (shared tables).
+
+*0.4.2 (2026-11-06)*
+* Tasks workspace: `applyCounts` no longer throws a `$root` ReferenceError under `'use strict'` (that exception was swallowed by jQuery 3 Deferred `exceptionHook`, leaving the Loading row after a valid `wpcable_query_tasks` JSON envelope). Renderer now scopes KPI updates, unwraps the WP `{success,data}` envelope, and replaces Loading on ajax failure.
+* Legacy `wpcable.js` in-memory task list does not run on `.wpcable-workspace` pages.
+* Date display uses `wp_date` (never `date_default_timezone_set`) and appends the WordPress timezone abbreviation so UTC vs PKT is labeled.
+* Estimate PERT/fee formulas unchanged (1/1/1 = 1:00/$100/$90; sequential 2/4/10 = 4:40/$466.67/$420 and cautious 6:40/$666.67). Earlier 0.4.1 “broken estimator” report was a fill-order artifact.
+* Production-JS integration tests (jsdom + jQuery) for Tasks renderer and Estimate page.
+
+*0.4.1 (2026-11-06)*
+* QA patch after 0.4.0 live install: reject invalid/future/Y2K38 activity timestamps so ages are not `-4092d ago` and 19 Jan 2038 is not shown
+* Opportunity scores ignore sentinel/future activity
+* Constrain plugin-scoped workspace avatars (max 32×32, object-fit)
+* Import health distinguishes cached local rows vs instrumented attempts; never invents success times from `last_fetch` / MAX(activity)
+* KPI filter counts use the same SQL as the matching table filter; state vs local flag labeled
+* Page views and hourly cron no longer enqueue a new GET queue; explicit Refresh only; pending interrupted queues still resume; concurrent tab lock
+* Project drawer: honest unavailable description/comments panels + existing workroom URL; no comments importer
+
+*0.4.0 (2026-11-06)*
+* Hybrid workspace inside this plugin: server-side Tasks pagination/search/filters/client grouping + Clients page + evidence-backed Opportunities
+* Preserve existing slugs (`codeable_transcactions_stats`, `codeable_tasks`, `codeable_estimate`, `codeable_settings`); Estimate math and Settings options unchanged
+* PHP 8 profile/avatar guards and invalid API JSON guards (from the repaired 0.3.1 baseline)
+* Honest financial empty state when transactions are missing — no fake $0 or year 1970
+* Per-source import health (profile / tasks / transactions) without inventing success times
+* Local notes remain editable; Codeable access stays read-only
+* Offline fixture tests (`php tests/run.php`)
+
 *0.0.1*
 * Initial build
 

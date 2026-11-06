@@ -1,0 +1,217 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>SYNTHETIC FIXTURE — Projects</title><link rel="stylesheet" href="../../../../assets/css/wpcable.css" /><link rel="stylesheet" href="../../../../assets/css/wpcable-workspace.css" /><link rel="stylesheet" href="../_shell.css" /><script src="../../vendor/jquery.min.js"></script><script>window.ajaxurl="/wp-admin/admin-ajax.php";</script><script src="../../integration/tasks-ajax-mock.js"></script><script src="../../../../assets/js/wpcable-workspace.js"></script></head><body><div class="wp-layout"><nav class="wp-sidebar"><h1>Codeable Stats</h1><a class="" href="production-stats.html">Overview</a><a class=" is-current" href="production-tasks.html">Projects</a><a class="" href="production-clients.html">Clients</a><a class="" href="production-opportunities.html">Opportunities</a><a class="" href="production-estimate.html">Estimate</a><a class="" href="production-settings.html">Settings</a></nav><main class="wp-main"><div class="banner"><strong>SYNTHETIC FIXTURE</strong> — production templates, offline fixture data. Not live Codeable. Not owner-authorised private clients.</div>	<div
+		class="wrap wpcable-app wpcable-workspace wpcable-workspace--tasks"
+		data-workspace="tasks"
+		data-connected="0"
+		data-has-data="1"
+	>
+		<header class="wpcable-app-header">
+			<div class="wpcable-app-heading">
+				<p class="wpcable-app-kicker">Codeable Stats</p>
+				<h1>Projects</h1>
+									<p class="wpcable-lede">Imported Codeable projects, paginated on the server. Expert-profile totals are a different scope than these local rows. Access stays read-only; only your local notes and flags are saved here.</p>
+							</div>
+			<div class="wpcable-status wpcable-status--disconnected_with_data">
+				<strong>Disconnected — showing saved data</strong>
+				<span>Codeable sign-in is not active. Sync is off. Saved projects, clients, notes, and profile stay here until you use Clear all data.</span>
+				<span class="wpcable-status__fresh">Source freshness unknown — no successful import is logged.</span>
+				<div class="wpcable-density" role="group" aria-label="Preview density">
+					<button type="button" class="button" data-density="comfortable">Comfortable</button>
+					<button type="button" class="button" data-density="compact">Compact</button>
+				</div>
+			</div>
+		</header>
+		<nav class="wpcable-app-nav" aria-label="Codeable Stats sections">
+							<a
+					class=""
+					href="https://example.test/wp-admin/admin.php?page=codeable_transcactions_stats"
+				>Overview</a>
+							<a
+					class="is-current"
+					href="https://example.test/wp-admin/admin.php?page=codeable_tasks"
+				>Projects</a>
+							<a
+					class=""
+					href="https://example.test/wp-admin/admin.php?page=codeable_clients"
+				>Clients</a>
+							<a
+					class=""
+					href="https://example.test/wp-admin/admin.php?page=codeable_opportunities"
+				>Opportunities</a>
+							<a
+					class=""
+					href="https://example.test/wp-admin/admin.php?page=codeable_estimate"
+				>Estimate</a>
+							<a
+					class=""
+					href="https://example.test/wp-admin/admin.php?page=codeable_settings"
+				>Settings</a>
+					</nav>
+		<div class="wpcable-kpi-row">
+		<div class="wpcable-kpi">
+			<span class="wpcable-kpi__label">Profile completed</span>
+			<span class="wpcable-kpi__value">12</span>
+			<span class="wpcable-kpi__meta">Expert profile completed count — not the local table</span>
+		</div>
+		<div class="wpcable-kpi">
+			<span class="wpcable-kpi__label">Imported rows</span>
+			<span class="wpcable-kpi__value" data-kpi="imported">30</span>
+			<span class="wpcable-kpi__meta">Imported project rows — matches All</span>
+		</div>
+		<div class="wpcable-kpi">
+			<span class="wpcable-kpi__label">Published (filter)</span>
+			<span class="wpcable-kpi__value" data-kpi="published">27</span>
+			<span class="wpcable-kpi__meta">Same count as the Published filter</span>
+		</div>
+		<div class="wpcable-kpi">
+			<span class="wpcable-kpi__label">Completed (filter)</span>
+			<span class="wpcable-kpi__value" data-kpi="completed">2</span>
+			<span class="wpcable-kpi__meta">Same count as the Completed filter</span>
+		</div>
+		<div class="wpcable-kpi">
+			<span class="wpcable-kpi__label">Lost (filter)</span>
+			<span class="wpcable-kpi__value" data-kpi="lost">1</span>
+			<span class="wpcable-kpi__meta">Same count as the Lost filter. Local heuristic, not hire proof.</span>
+		</div>
+		<div class="wpcable-kpi wpcable-kpi--unavailable">
+			<span class="wpcable-kpi__label">Transactions</span>
+			<span class="wpcable-kpi__value">Missing</span>
+			<span class="wpcable-kpi__meta">Unavailable — not $0 revenue</span>
+		</div>
+	</div>
+
+	<div class="wpcable-toolbar">
+		<div class="wpcable-filters" role="group" aria-label="Status filters">
+			<button type="button" class="button button-primary wpcable-filter is-active" data-state="all" data-filter-key="all">All</button>
+			<button type="button" class="button wpcable-filter" data-state="published" data-filter-key="published">Published</button>
+			<button type="button" class="button wpcable-filter" data-completed="1" data-filter-key="completed">Completed</button>
+			<button type="button" class="button wpcable-filter" data-paid="1" data-filter-key="paid">Paid</button>
+			<button type="button" class="button wpcable-filter" data-estimated="1" data-filter-key="estimated">Estimated</button>
+			<button type="button" class="button wpcable-filter" data-lost="1" data-filter-key="lost">Lost</button>
+			<button type="button" class="button wpcable-filter" data-preferred="1" data-filter-key="preferred">Preferred</button>
+			<button type="button" class="button wpcable-filter" data-has_notes="1" data-filter-key="with_notes">Has notes</button>
+		</div>
+		<div class="wpcable-toolbar__right">
+			<label class="wpcable-check">
+				<input type="checkbox" id="wpcable-group-clients" />
+				Group by client			</label>
+			<label>
+				<span class="screen-reader-text">Search client or project</span>
+				<input type="search" id="wpcable-task-search" class="wpcable-search" placeholder="Search name, title, id, notes…" />
+			</label>
+			<label>
+				Per page				<select id="wpcable-per-page">
+					<option value="25">25</option>
+					<option value="50">50</option>
+					<option value="100">100</option>
+				</select>
+			</label>
+		</div>
+	</div>
+	<p class="description wpcable-lost-note">
+		KPI cards use the same SQL as the matching filter button. State and local flag are different columns; a row can be state=published and flag=lost. Lost is a local heuristic (hidden / canceled / stale / private workroom), not proof another expert was hired. Click Refresh to run a read-only Codeable GET queue; ordinary page views do not start one and do not rewrite flags.	</p>
+	<p class="wpcable-sync-banner" id="wpcable-sync-banner" hidden>
+		A read-only Refresh is in progress. Filter counts can change as pages import. This banner is source state, not a completed import.	</p>
+
+	<div class="wpcable-workspace-layout">
+		<div class="wpcable-table-card">
+			<table class="widefat striped wpcable-tasks-table">
+				<thead>
+					<tr>
+						<th>Client</th>
+						<th>Last activity</th>
+						<th>Project</th>
+						<th>Value</th>
+						<th>Title</th>
+						<th>Status / flags</th>
+						<th>Notes</th>
+					</tr>
+				</thead>
+				<tbody id="wpcable-task-rows">
+					<tr class="wpcable-empty-row"><td colspan="7">Loading projects…</td></tr>
+				</tbody>
+			</table>
+			<div class="wpcable-pagination" id="wpcable-task-pagination"></div>
+		</div>
+
+		<aside class="wpcable-drawer" id="wpcable-task-drawer" hidden>
+			<div class="wpcable-drawer__inner">
+				<button type="button" class="button-link wpcable-drawer__close">Close</button>
+				<div id="wpcable-task-drawer-body"></div>
+			</div>
+		</aside>
+	</div>
+
+	<div class="notes-editor-layer" style="display:none">
+		<div class="notes-editor">
+			<h2 class="task-title"></h2>
+			<p class="description">These notes stay in WordPress. They are never sent to Codeable.</p>
+			<textarea></textarea>
+			<div class="buttons">
+				<button type="button" class="button btn-cancel">Cancel</button>
+				<button type="button" class="button button-primary btn-save">Save local notes</button>
+			</div>
+		</div>
+	</div>
+
+<style>
+.flag-,[data-flag=""]{--color:;--bgcolor:10;}.flag-prio,[data-flag="prio"]{--color:#cc0000;--bgcolor:#cc000010;}.flag-completed,[data-flag="completed"]{--color:#b39ddb;--bgcolor:#b39ddb10;}.flag-won,[data-flag="won"]{--color:#673ab7;--bgcolor:#673ab710;}.flag-estimated,[data-flag="estimated"]{--color:#9ccc65;--bgcolor:#9ccc6510;}.flag-optimistic,[data-flag="optimistic"]{--color:#00b0ff;--bgcolor:#00b0ff10;}.flag-neutral,[data-flag="neutral"]{--color:#80d8ff;--bgcolor:#80d8ff10;}.flag-tough,[data-flag="tough"]{--color:#607d8b;--bgcolor:#607d8b10;}.flag-pessimistic,[data-flag="pessimistic"]{--color:#90a4ae;--bgcolor:#90a4ae10;}.flag-lost,[data-flag="lost"]{--color:#cfd8dc;--bgcolor:#cfd8dc10;}</style>
+<script>
+window.wpcable=window.wpcable||{};
+wpcable.update_task_nonce="test-nonce";
+wpcable.colorFlags={"":{"label":"New","color":""},"prio":{"label":"Priority","color":"#cc0000"},"completed":{"label":"Won (completed)","color":"#b39ddb"},"won":{"label":"Won (active)","color":"#673ab7"},"estimated":{"label":"Estimated","color":"#9ccc65"},"optimistic":{"label":"Active rapport","color":"#00b0ff"},"neutral":{"label":"Normal","color":"#80d8ff"},"tough":{"label":"Difficult","color":"#607d8b"},"pessimistic":{"label":"Unresponsive","color":"#90a4ae"},"lost":{"label":"Lost (local heuristic)","color":"#cfd8dc"}};
+</script>
+	<div id="wpcable-import-health" class="codeable-last-refresh wpcable-import-health">
+		<strong>Import health (per source)</strong>
+						<ul class="wpcable-import-health-list">
+											<li class="wpcable-import-health-cached">
+					<span class="wpcable-import-health-label">Expert profile (users/me)</span>
+					<span class="wpcable-import-health-status">Cached locally — no recorded attempt — Cached locally — no recorded attempt. This is not an instrumented import success.</span>
+									</li>
+											<li class="wpcable-import-health-cached">
+					<span class="wpcable-import-health-label">Imported tasks</span>
+					<span class="wpcable-import-health-status">Cached locally — no recorded attempt — 30 local rows — no recorded attempt. Cached imports are not the same as an instrumented Refresh.</span>
+									</li>
+											<li class="wpcable-import-health-never">
+					<span class="wpcable-import-health-label">Money transactions</span>
+					<span class="wpcable-import-health-status">No recorded attempt — No recorded attempt and no local rows. Missing is not $0 revenue.</span>
+									</li>
+					</ul>
+		<p class="description">
+							No completed refresh queue is stored. Per-source timestamps appear only after an instrumented attempt recorded success — never from cached row dates.						<span class="tooltip" tabindex="0">
+				<span class="tooltip-text">Click Refresh to start a read-only Codeable GET queue. Page views and hourly WP-Cron do not enqueue a new queue (0.4.1). An interrupted Refresh still resumes. Access is read-only. A missing transactions import is not $0 revenue. Cached rows without a recorded attempt are labeled as cached, not as a successful import.</span>
+				<i class="dashicons dashicons-info"></i>
+			</span>
+			|
+							<span class="wpcable-sync-disabled">Refresh is off while disconnected. Saved data stays visible.</span>
+				<a href="https://example.test/wp-admin/admin.php?page=codeable_settings">
+					Connect in Settings				</a>
+					</p>
+	</div>
+	<div class="codeable-sync-progress" style="display:none" data-nonce="test-nonce" data-resume-pending="1" data-sync-allowed="0">
+		<span class="spinner is-active"></span>
+		<span class="msg">
+					</span>
+	</div>
+		<script>
+	(function () {
+		var root = document.querySelector('.wpcable-app');
+		if (!root || !window.localStorage) {
+			return;
+		}
+		var key = 'wpcable-density';
+		var saved = localStorage.getItem(key) || 'comfortable';
+		root.classList.toggle('wpcable-app--compact', saved === 'compact');
+		root.querySelectorAll('[data-density]').forEach(function (btn) {
+			btn.classList.toggle('button-primary', btn.getAttribute('data-density') === saved);
+			btn.addEventListener('click', function () {
+				var next = btn.getAttribute('data-density');
+				localStorage.setItem(key, next);
+				root.classList.toggle('wpcable-app--compact', next === 'compact');
+				root.querySelectorAll('[data-density]').forEach(function (other) {
+					other.classList.toggle('button-primary', other.getAttribute('data-density') === next);
+				});
+			});
+		});
+	})();
+	</script>
+	</div></main></div></body></html>

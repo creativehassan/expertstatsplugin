@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>SYNTHETIC FIXTURE — Stats without transactions</title>
+<link rel="stylesheet" href="../../../assets/css/wpcable-workspace.css" />
+<link rel="stylesheet" href="_shell.css" />
+<style>
+.box{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:16px;flex:1}
+.flex-row{display:flex;gap:12px;flex-wrap:wrap}
+.maindata .label{color:#3b4151;font-size:16px}
+.maindata .value{font-size:28px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wp-layout">
+  <nav class="wp-sidebar">
+    <h1>Codeable Stats</h1>
+    <a class="is-current" href="stats-empty.html">Stats</a>
+    <a href="clients-workspace.html">Clients</a>
+    <a href="tasks-workspace.html">Tasks</a>
+    <a href="opportunities.html">Opportunities</a>
+    <a href="#">Estimate</a>
+    <a href="#">Settings</a>
+  </nav>
+  <main class="wp-main">
+    <div class="banner"><strong>SYNTHETIC FIXTURE</strong> — demonstrates the honest empty state when money transactions have not imported. No $0.00 and no year 1970.</div>
+    <div class="wrap cable_stats_wrap">
+      <h1>Codeable Stats</h1>
+      <div class="flex-row" style="margin:16px 0">
+        <div class="box"><div class="maindata"><div class="label">Profile completed</div><div class="value">911</div></div><p>Source: users/me profile · tasks_count 600 (different scope from 30 imported local rows)</p></div>
+        <div class="box"><div class="maindata"><div class="label">Imported local rows</div><div class="value">30</div></div></div>
+        <div class="box"><div class="maindata"><div class="label">Balance</div><div class="value" style="color:#b26200">Unavailable</div></div><p>Money transactions are not imported. This is not $0.</p></div>
+        <div class="box"><div class="maindata"><div class="label">Total Revenue</div><div class="value" style="color:#b26200">Unavailable</div></div><p>No transaction date range — hiding 1970/empty defaults.</p></div>
+      </div>
+      <div class="wpcable-financial-empty">
+        <h2>Money charts are hidden</h2>
+        <p>Transactions have not imported into the local database. Showing $0.00 or January 1970 would be misleading, so revenue, fees, monthly charts, and the transaction-based client table stay hidden until this source succeeds.</p>
+      </div>
+      <div class="wpcable-import-health" style="margin-top:20px;background:#fff;padding:12px;border:1px solid #dcdcde;border-radius:8px">
+        <strong>Import health (per source)</strong>
+        <ul class="wpcable-import-health-list">
+          <li class="wpcable-import-health-cached"><span class="wpcable-import-health-label">Expert profile (users/me)</span> Cached locally — no recorded attempt</li>
+          <li class="wpcable-import-health-cached"><span class="wpcable-import-health-label">Imported tasks</span> 30 local rows — no recorded attempt. Cached imports are not the same as an instrumented Refresh.</li>
+          <li class="wpcable-import-health-never"><span class="wpcable-import-health-label">Money transactions</span> No recorded attempt and no local rows. Missing is not $0 revenue.</li>
+        </ul>
+        <p class="description">No completed refresh queue is stored. Per-source timestamps appear only after an instrumented attempt recorded success — never from cached row dates. Click Refresh to start a read-only Codeable GET queue. Page views do not enqueue one.</p>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

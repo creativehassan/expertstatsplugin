@@ -205,7 +205,23 @@ class wpcable_api_data {
 
 		$account_details = $this->api_calls->self();
 
+		// Do not overwrite existing profile data with a failed/malformed API response.
+		if ( ! is_array( $account_details ) ) {
+			wpcable_import_health::record(
+				'profile',
+				'failed',
+				__( 'Profile response was not a JSON object. Existing profile option was left unchanged.', 'wpcable' )
+			);
+			return;
+		}
+
 		update_option( 'wpcable_account_details', $account_details );
+		wpcable_import_health::record(
+			'profile',
+			'success',
+			__( 'Expert profile stored from users/me.', 'wpcable' ),
+			1
+		);
 	}
 
 	/**
@@ -225,41 +241,77 @@ class wpcable_api_data {
 
 		$single_page = $this->api_calls->transactions_page( $page );
 
-		if ( 2 === $page ) {
-			update_option( 'wpcable_average', $single_page['average_task_size'] );
-			update_option( 'wpcable_balance', $single_page['balance'] );
-			update_option( 'wpcable_revenue', $single_page['revenue'] );
+		if ( ! is_array( $single_page ) ) {
+			wpcable_import_health::record(
+				'transactions',
+				'failed',
+				__( 'Transactions response was not a JSON object. Revenue charts stay unavailable — not $0.', 'wpcable' )
+			);
+			return false;
 		}
 
-		if ( empty( $single_page['transactions'] ) ) {
+		if ( 2 === $page ) {
+			if ( isset( $single_page['average_task_size'] ) ) {
+				update_option( 'wpcable_average', $single_page['average_task_size'] );
+			}
+			if ( isset( $single_page['balance'] ) ) {
+				update_option( 'wpcable_balance', $single_page['balance'] );
+			}
+			if ( isset( $single_page['revenue'] ) ) {
+				update_option( 'wpcable_revenue', $single_page['revenue'] );
+			}
+		}
+
+		if ( empty( $single_page['transactions'] ) || ! is_array( $single_page['transactions'] ) ) {
+			if ( 1 === (int) $page ) {
+				wpcable_import_health::record(
+					'transactions',
+					'missing',
+					__( 'No transaction rows returned. This is unavailable data, not $0 revenue.', 'wpcable' )
+				);
+			}
 			return false;
 		} else {
 
 			// Get all data to the DB.
 			foreach ( $single_page['transactions'] as $tr ) {
 
+				if ( ! is_array( $tr ) || empty( $tr['id'] ) ) {
+					continue;
+				}
+
+				$task_node   = ( isset( $tr['task'] ) && is_array( $tr['task'] ) ) ? $tr['task'] : array();
+				$client_node = ( isset( $tr['task_client'] ) && is_array( $tr['task_client'] ) ) ? $tr['task_client'] : array();
+
 				// Check if transactions already exists.
 				$check = $wpdb->get_results(
-					"SELECT COUNT(1) AS totalrows
-					FROM `{$this->tables['transcactions']}`
-					WHERE id = '{$tr['id']}';
-					"
+					$wpdb->prepare(
+						"SELECT COUNT(1) AS totalrows
+						FROM `{$this->tables['transcactions']}`
+						WHERE id = %d",
+						(int) $tr['id']
+					)
 				);
 
-				$exists = $check[0]->totalrows > 0;
+				$exists = ! empty( $check[0]->totalrows );
+
+				$timestamp = isset( $tr['timestamp'] ) ? (int) $tr['timestamp'] : 0;
+				$dateadded = ( $timestamp > 0 && (int) gmdate( 'Y', $timestamp ) >= 2008 )
+					? date( 'Y-m-d H:i:s', $timestamp )
+					: '';
 
 				$new_tr = [
 					'id'             => $tr['id'],
-					'description'    => $tr['description'],
-					'dateadded'      => date( 'Y-m-d H:i:s', $tr['timestamp'] ),
-					'fee_percentage' => $tr['fee_percentage'],
-					'fee_amount'     => $tr['fee_amount'],
-					'task_type'      => $tr['task']['kind'],
-					'task_id'        => $tr['task']['id'],
-					'task_title'     => $tr['task']['title'],
-					'parent_task_id' => ( $tr['task']['parent_task_id'] > 0 ? $tr['task']['parent_task_id'] : 0 ),
-					'preferred'      => $tr['task']['current_user_is_preferred_contractor'],
-					'client_id'      => $tr['task_client']['id'],
+					'description'    => isset( $tr['description'] ) ? $tr['description'] : '',
+					'dateadded'      => $dateadded,
+					'fee_percentage' => isset( $tr['fee_percentage'] ) ? $tr['fee_percentage'] : null,
+					'fee_amount'     => isset( $tr['fee_amount'] ) ? $tr['fee_amount'] : null,
+					'task_type'      => isset( $task_node['kind'] ) ? $task_node['kind'] : '',
+					'task_id'        => isset( $task_node['id'] ) ? $task_node['id'] : 0,
+					'task_title'     => isset( $task_node['title'] ) ? $task_node['title'] : '',
+					'parent_task_id' => ( ! empty( $task_node['parent_task_id'] ) ? $task_node['parent_task_id'] : 0 ),
+					'preferred'      => ! empty( $task_node['current_user_is_preferred_contractor'] ),
+					'client_id'      => isset( $client_node['id'] ) ? $client_node['id'] : 0,
 					'last_sync'      => time(),
 				];
 
@@ -287,23 +339,41 @@ class wpcable_api_data {
 					);
 				}
 
-				$this->store_client( $tr['task_client'] );
+				$this->store_client( $client_node );
 				$this->store_amount(
-					$tr['task']['id'],
-					$tr['task_client']['id'],
-					$tr['credit_amounts'],
-					$tr['debit_amounts']
+					isset( $task_node['id'] ) ? $task_node['id'] : 0,
+					isset( $client_node['id'] ) ? $client_node['id'] : 0,
+					isset( $tr['credit_amounts'] ) ? $tr['credit_amounts'] : array(),
+					isset( $tr['debit_amounts'] ) ? $tr['debit_amounts'] : array()
 				);
 
 				// If we find a transaction that already exists, bail out and don't continue updating all the transactions
 				if ( $exists ) {
-					update_option( 'wpcable_average', $single_page['average_task_size'] );
-					update_option( 'wpcable_balance', $single_page['balance'] );
-					update_option( 'wpcable_revenue', $single_page['revenue'] );
+					if ( isset( $single_page['average_task_size'] ) ) {
+						update_option( 'wpcable_average', $single_page['average_task_size'] );
+					}
+					if ( isset( $single_page['balance'] ) ) {
+						update_option( 'wpcable_balance', $single_page['balance'] );
+					}
+					if ( isset( $single_page['revenue'] ) ) {
+						update_option( 'wpcable_revenue', $single_page['revenue'] );
+					}
+					wpcable_import_health::record(
+						'transactions',
+						'success',
+						__( 'Transactions import reached an existing row and stopped (incremental).', 'wpcable' )
+					);
 					return false;
 				}
 
 			}
+
+			wpcable_import_health::record(
+				'transactions',
+				'success',
+				__( 'Transaction page stored.', 'wpcable' ),
+				count( $single_page['transactions'] )
+			);
 
 			return $page + 1;
 		}
@@ -313,6 +383,9 @@ class wpcable_api_data {
 	 * Marks all pending tasks as "lost", since the `store_tasks()` method will only
 	 * receive pending/won tasks. This way we know, that all tasks that were not
 	 * fetched by the `store_tasks()` method are not available for us anymore.
+	 *
+	 * 0.4.1: this still runs as the `task:lost` step of an explicit Refresh
+	 * queue. Ordinary page views and WP-Cron no longer enqueue that queue.
 	 *
 	 * @return void
 	 */
@@ -367,19 +440,38 @@ class wpcable_api_data {
 		$single_page        = $this->api_calls->tasks_page( $filter, $page );
 		$cancel_after_hours = 24 * (int) get_option( 'wpcable_cancel_after_days', 180 );
 
-		if ( empty( $single_page ) ) {
+		if ( false === $single_page ) {
+			wpcable_import_health::record(
+				'tasks',
+				'failed',
+				sprintf(
+					/* translators: %s: task filter */
+					__( 'Tasks response for “%s” was not valid JSON.', 'wpcable' ),
+					$filter
+				)
+			);
+			return false;
+		}
+
+		if ( empty( $single_page ) || ! is_array( $single_page ) ) {
 			return false;
 		} else {
 
 			// Get all data to the DB.
 			foreach ( $single_page as $task ) {
 
+				if ( ! is_array( $task ) || empty( $task['id'] ) ) {
+					continue;
+				}
+
 				// Check if the task already exists.
 				$check = $wpdb->get_results(
-					"SELECT COUNT(1) AS totalrows
-					FROM `{$this->tables['tasks']}`
-					WHERE task_id = '{$task['id']}';
-					"
+					$wpdb->prepare(
+						"SELECT COUNT(1) AS totalrows
+						FROM `{$this->tables['tasks']}`
+						WHERE task_id = %d",
+						(int) $task['id']
+					)
 				);
 
 				// If the record exists then continue with next filter.
@@ -387,19 +479,19 @@ class wpcable_api_data {
 
 				$new_task = [
 					'task_id'      => $task['id'],
-					'client_id'    => $task['client']['id'],
-					'title'        => $task['title'],
+					'client_id'    => ( isset( $task['client']['id'] ) ? $task['client']['id'] : 0 ),
+					'title'        => isset( $task['title'] ) ? $task['title'] : '',
 					'estimate'     => ! empty( $task['estimatable'] ),
 					'hidden'       => ! empty( $task['hidden_by_current_user'] ),
 					'promoted'     => ! empty( $task['promoted_task'] ),
 					'subscribed'   => ! empty( $task['subscribed_by_current_user'] ),
 					'favored'      => ! empty( $task['favored_by_current_user'] ),
 					'preferred'    => ! empty( $task['current_user_is_preferred_contractor'] ),
-					'client_fee'   => (float) $task['prices']['client_fee_percentage'],
-					'state'        => $task['state'],
-					'kind'         => $task['kind'],
-					'value'        => (float) $task['prices']['contractor_earnings'],
-					'value_client' => (float) $task['prices']['client_price_after_discounts'],
+					'client_fee'   => ( isset( $task['prices'] ) && is_array( $task['prices'] ) && isset( $task['prices']['client_fee_percentage'] ) ) ? (float) $task['prices']['client_fee_percentage'] : 17.5,
+					'state'        => isset( $task['state'] ) ? $task['state'] : '',
+					'kind'         => isset( $task['kind'] ) ? $task['kind'] : '',
+					'value'        => ( isset( $task['prices'] ) && is_array( $task['prices'] ) && isset( $task['prices']['contractor_earnings'] ) ) ? (float) $task['prices']['contractor_earnings'] : 0,
+					'value_client' => ( isset( $task['prices'] ) && is_array( $task['prices'] ) && isset( $task['prices']['client_price_after_discounts'] ) ) ? (float) $task['prices']['client_price_after_discounts'] : 0,
 					'last_sync'    => time(),
 				];
 
@@ -422,6 +514,10 @@ class wpcable_api_data {
 				if ( ! empty( $task['last_event']['user']['full_name'] ) ) {
 					$new_task['last_activity_by'] = $task['last_event']['user']['full_name'];
 				}
+
+				// Persist description/comments only when those keys are already
+				// on this permitted list payload. Does not call GET /tasks/{id}.
+				$new_task = wpcable_apply_payload_history( $new_task, $task );
 
 				if ( ! empty( $task['last_event']['type']) && 'create_vault' === $task['last_event']['type']) {
 					$new_task['last_activity'] = (int) strtotime($task['last_event']['user']['last_sign_in_at']);
@@ -493,8 +589,22 @@ class wpcable_api_data {
 					);
 				}
 
-				$this->store_client( $task['client'] );
+				if ( isset( $task['client'] ) ) {
+					$this->store_client( $task['client'] );
+				}
 			}
+
+			wpcable_import_health::record(
+				'tasks',
+				'success',
+				sprintf(
+					/* translators: 1: filter, 2: page */
+					__( 'Tasks filter “%1$s” page %2$d stored.', 'wpcable' ),
+					$filter,
+					$page
+				),
+				count( $single_page )
+			);
 
 			return $page + 1;
 		}
@@ -510,31 +620,52 @@ class wpcable_api_data {
 		global $wpdb;
 
 		// The API is returning some blank rows, ensure we have a valid client_id.
-		if ( ! $client || ! is_int( $client['id'] ) ) {
+		if ( ! is_array( $client ) || empty( $client['id'] ) || ! is_numeric( $client['id'] ) ) {
 			return;
 		}
 
 		// Check, if the client already exists.
 		$check_client = $wpdb->get_results(
-			"SELECT COUNT(1) AS totalrows
-			FROM `{$this->tables['clients']}`
-			WHERE client_id = '{$client['id']}';"
+			$wpdb->prepare(
+				"SELECT COUNT(1) AS totalrows
+				FROM `{$this->tables['clients']}`
+				WHERE client_id = %d",
+				(int) $client['id']
+			)
 		);
 
 		// When the client already exists, stop here.
 		$exists = $check_client[0]->totalrows > 0;
 
+		$avatar = ( isset( $client['avatar'] ) && is_array( $client['avatar'] ) ) ? $client['avatar'] : array();
+		if ( isset( $client['avatar'] ) && is_string( $client['avatar'] ) ) {
+			$avatar = array(
+				'tiny_url'   => $client['avatar'],
+				'small_url'  => $client['avatar'],
+				'medium_url' => $client['avatar'],
+				'large_url'  => $client['avatar'],
+			);
+		}
+
+		$sign_in = '';
+		if ( ! empty( $client['last_sign_in_at'] ) ) {
+			$sign_ts = strtotime( $client['last_sign_in_at'] );
+			if ( $sign_ts && (int) gmdate( 'Y', $sign_ts ) >= 2008 ) {
+				$sign_in = date( 'Y-m-d H:i:s', $sign_ts );
+			}
+		}
+
 		$new_client = [
 			'client_id'       => $client['id'],
-			'full_name'       => $client['full_name'],
-			'role'            => $client['role'],
-			'last_sign_in_at' => date( 'Y-m-d H:i:s', strtotime( $client['last_sign_in_at'] ) ),
-			'pro'             => $client['pro'],
-			'timezone_offset' => $client['timezone_offset'],
-			'tiny'            => $client['avatar']['tiny_url'],
-			'small'           => $client['avatar']['small_url'],
-			'medium'          => $client['avatar']['medium_url'],
-			'large'           => $client['avatar']['large_url'],
+			'full_name'       => isset( $client['full_name'] ) ? $client['full_name'] : '',
+			'role'            => isset( $client['role'] ) ? $client['role'] : '',
+			'last_sign_in_at' => $sign_in,
+			'pro'             => isset( $client['pro'] ) ? $client['pro'] : 0,
+			'timezone_offset' => isset( $client['timezone_offset'] ) ? $client['timezone_offset'] : 0,
+			'tiny'            => isset( $avatar['tiny_url'] ) ? $avatar['tiny_url'] : '',
+			'small'           => isset( $avatar['small_url'] ) ? $avatar['small_url'] : '',
+			'medium'          => isset( $avatar['medium_url'] ) ? $avatar['medium_url'] : '',
+			'large'           => isset( $avatar['large_url'] ) ? $avatar['large_url'] : '',
 			'last_sync'       => time(),
 		];
 
@@ -563,19 +694,26 @@ class wpcable_api_data {
 			return;
 		}
 
+		if ( ! is_array( $credit ) ) {
+			$credit = array();
+		}
+		if ( ! is_array( $debit ) ) {
+			$debit = array();
+		}
+
 		$new_amount = [
 			'task_id'               => $task_id,
 			'client_id'             => $client_id,
-			'credit_revenue_id'     => $credit[0]['id'],
-			'credit_revenue_amount' => $credit[0]['amount'],
-			'credit_fee_id'         => $credit[1]['id'],
-			'credit_fee_amount'     => $credit[1]['amount'],
-			'credit_user_id'        => $credit[2]['id'],
-			'credit_user_amount'    => $credit[2]['amount'],
-			'debit_cost_id'         => $debit[0]['id'],
-			'debit_cost_amount'     => $debit[0]['amount'],
-			'debit_user_id'         => $debit[1]['id'],
-			'debit_user_amount'     => $debit[1]['amount'],
+			'credit_revenue_id'     => isset( $credit[0]['id'] ) ? $credit[0]['id'] : null,
+			'credit_revenue_amount' => isset( $credit[0]['amount'] ) ? $credit[0]['amount'] : null,
+			'credit_fee_id'         => isset( $credit[1]['id'] ) ? $credit[1]['id'] : null,
+			'credit_fee_amount'     => isset( $credit[1]['amount'] ) ? $credit[1]['amount'] : null,
+			'credit_user_id'        => isset( $credit[2]['id'] ) ? $credit[2]['id'] : null,
+			'credit_user_amount'    => isset( $credit[2]['amount'] ) ? $credit[2]['amount'] : null,
+			'debit_cost_id'         => isset( $debit[0]['id'] ) ? $debit[0]['id'] : null,
+			'debit_cost_amount'     => isset( $debit[0]['amount'] ) ? $debit[0]['amount'] : null,
+			'debit_user_id'         => isset( $debit[1]['id'] ) ? $debit[1]['id'] : null,
+			'debit_user_amount'     => isset( $debit[1]['amount'] ) ? $debit[1]['amount'] : null,
 		];
 
 		$wpdb->replace( $this->tables['amounts'], $new_amount );
