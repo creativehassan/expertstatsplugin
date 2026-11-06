@@ -276,7 +276,22 @@ function wpcable_extract_comments_list( $body ) {
 }
 
 /**
- * Format a comment timestamp in the WordPress timezone using DateTime.
+ * Comment timestamps always display in PKT (Asia/Karachi).
+ * Ignores an empty or misconfigured WordPress timezone. Does not call
+ * date_default_timezone_set. Unparsable values stay as stored.
+ *
+ * @return DateTimeZone
+ */
+function wpcable_comment_display_timezone() {
+	try {
+		return new DateTimeZone( 'Asia/Karachi' );
+	} catch ( Exception $e ) {
+		return new DateTimeZone( 'UTC' );
+	}
+}
+
+/**
+ * Format a comment timestamp in PKT using DateTime.
  * Does not call date_default_timezone_set. Unparsable values stay as stored.
  *
  * @param mixed $value Unix, ISO-8601, or already-labeled string.
@@ -294,11 +309,7 @@ function wpcable_comment_datetime_display( $value ) {
 		return $raw;
 	}
 
-	try {
-		$tz = function_exists( 'wp_timezone' ) ? wp_timezone() : new DateTimeZone( 'UTC' );
-	} catch ( Exception $e ) {
-		$tz = new DateTimeZone( 'UTC' );
-	}
+	$tz = wpcable_comment_display_timezone();
 
 	$dt = null;
 	if ( is_numeric( $raw ) && (int) $raw > 100000 ) {
@@ -325,7 +336,32 @@ function wpcable_comment_datetime_display( $value ) {
 	$df = ( is_string( $df ) && $df ) ? $df : 'Y-m-d';
 	$tf = ( is_string( $tf ) && $tf ) ? $tf : 'H:i';
 	$abbr = $dt->format( 'T' );
-	return $dt->format( $df . ' ' . $tf ) . ( $abbr ? ' ' . $abbr : '' );
+	if ( ! $abbr || 'UTC' === $abbr ) {
+		$abbr = 'PKT';
+	}
+	return $dt->format( $df . ' ' . $tf ) . ' ' . $abbr;
+}
+
+/**
+ * Stable comments GET signature for duplicate-page detection.
+ *
+ * @param string $path  Allowlisted path.
+ * @param array  $query Query args.
+ * @return string
+ */
+function wpcable_comments_query_sig( $path, $query = array() ) {
+	$path = (string) $path;
+	if ( ! is_array( $query ) ) {
+		$query = array();
+	}
+	ksort( $query );
+	$parts = array();
+	foreach ( $query as $k => $v ) {
+		if ( is_scalar( $v ) ) {
+			$parts[] = (string) $k . '=' . (string) $v;
+		}
+	}
+	return $path . ( $parts ? '?' . implode( '&', $parts ) : '' );
 }
 
 /**
@@ -454,8 +490,9 @@ function wpcable_merge_comment_items( $old, $new ) {
 
 /**
  * Fetch one imported project's description + comments via documented GETs.
- * Bound to a local task_id. Does not bulk backfill. Does not overwrite cache
- * when the remote call fails. One comments HTTP GET per click.
+ * Bound to a local task_id. One comments HTTP GET per call. Bulk backfill ticks
+ * call this repeatedly with a request budget. Does not overwrite cache when the
+ * remote call fails.
  *
  * @param int   $task_id Local imported task id.
  * @param array $args    {more:bool}.
@@ -563,6 +600,25 @@ function wpcable_load_task_history_run( $task_id, $args = array() ) {
 				'note'   => 'error_not_overwritten',
 			);
 		}
+
+		if ( 401 === (int) $desc_res['status'] ) {
+			$fields['history_meta_json'] = wp_json_encode( $meta );
+			wpcable_save_history_cache( $task_id, $fields );
+			$result['state']       = 'AUTH_EXPIRED';
+			$result['message']     = __( 'Codeable authorization expired (401). Saved cache was not overwritten. Sign in again, then resume.', 'wpcable' );
+			$result['retry_after'] = isset( $desc_res['retry_after'] ) ? (int) $desc_res['retry_after'] : 0;
+			$result['history']     = wpcable_task_history_for_display( $existing );
+			return $result;
+		}
+		if ( 429 === (int) $desc_res['status'] ) {
+			$fields['history_meta_json'] = wp_json_encode( $meta );
+			wpcable_save_history_cache( $task_id, $fields );
+			$result['state']       = 'RATE_LIMITED';
+			$result['message']     = __( 'Codeable rate-limited this read (429). Saved cache was not overwritten.', 'wpcable' );
+			$result['retry_after'] = isset( $desc_res['retry_after'] ) ? (int) $desc_res['retry_after'] : 0;
+			$result['history']     = wpcable_task_history_for_display( $existing );
+			return $result;
+		}
 	}
 
 	$existing_items = array();
@@ -586,13 +642,15 @@ function wpcable_load_task_history_run( $task_id, $args = array() ) {
 			: array();
 	}
 
+	$last_sig = isset( $meta['comments']['last_query_sig'] ) ? (string) $meta['comments']['last_query_sig'] : '';
 	$comments_fetch = wpcable_fetch_task_comments_page(
 		$api,
 		$task_id,
 		array(
-			'more'           => $more,
-			'query'          => $more ? $next_query : array( 'limit' => 20, 'offset' => 0 ),
-			'existing_items' => $existing_items,
+			'more'            => $more,
+			'query'           => $more ? $next_query : array( 'limit' => 20, 'offset' => 0 ),
+			'existing_items'  => $existing_items,
+			'last_query_sig'  => $more ? $last_sig : '',
 		)
 	);
 	$result['calls']    = array_merge( $result['calls'], $comments_fetch['calls'] );
@@ -605,7 +663,12 @@ function wpcable_load_task_history_run( $task_id, $args = array() ) {
 		'forbidden'            => ! empty( $comments_fetch['forbidden'] ),
 		'shape'                => $comments_fetch['shape'],
 		'server_ignored_limit' => ! empty( $comments_fetch['server_ignored_limit'] ),
+		'next_replay'          => $comments_fetch['next_replay'],
+		'query_sig'            => isset( $comments_fetch['query_sig'] ) ? $comments_fetch['query_sig'] : '',
+		'duplicate_only'       => ! empty( $comments_fetch['duplicate_only'] ),
+		'loop_guard'           => ! empty( $comments_fetch['loop_guard'] ),
 	);
+	$result['retry_after'] = isset( $comments_fetch['retry_after'] ) ? (int) $comments_fetch['retry_after'] : 0;
 
 	if ( $comments_fetch['ok'] ) {
 		$fields['comments_present']  = 1;
@@ -634,6 +697,7 @@ function wpcable_load_task_history_run( $task_id, $args = array() ) {
 		'duplicate_only'        => $comments_fetch['duplicate_only'],
 		'next_replay'           => $comments_fetch['next_replay'],
 		'shape'                 => $comments_fetch['shape'],
+		'last_query_sig'        => isset( $comments_fetch['query_sig'] ) ? $comments_fetch['query_sig'] : $last_sig,
 	);
 
 	if ( $saved ) {
@@ -647,7 +711,19 @@ function wpcable_load_task_history_run( $task_id, $args = array() ) {
 	$result['history'] = wpcable_task_history_for_display( $fresh ? $fresh : $existing );
 	$result['saved'] = $saved;
 
-	if ( $saved ) {
+	if ( ! empty( $comments_fetch['loop_guard'] ) ) {
+		$result['state']   = 'loop_guard';
+		$result['message'] = __( 'The next comments request matched the last page already fetched. Stopped without looping. Last saved cache was not overwritten.', 'wpcable' );
+		$result['ok']      = false;
+	} elseif ( 401 === (int) $comments_fetch['http'] ) {
+		$result['state']   = 'AUTH_EXPIRED';
+		$result['message'] = __( 'Codeable authorization expired (401). Saved cache was not overwritten. Sign in again, then resume.', 'wpcable' );
+		$result['ok']      = false;
+	} elseif ( 429 === (int) $comments_fetch['http'] ) {
+		$result['state']   = 'RATE_LIMITED';
+		$result['message'] = __( 'Codeable rate-limited this read (429). Saved cache was not overwritten.', 'wpcable' );
+		$result['ok']      = false;
+	} elseif ( $comments_fetch['ok'] ) {
 		$result['state']   = $comments_fetch['complete'] ? 'loaded' : 'partial';
 		$result['message'] = $comments_fetch['complete']
 			? __( 'Saved description and comments from Codeable (read-only).', 'wpcable' )
@@ -657,6 +733,14 @@ function wpcable_load_task_history_run( $task_id, $args = array() ) {
 		$result['state']   = 'FORBIDDEN';
 		$result['message'] = __( 'Codeable refused this read (403). Full task and private comments are only for the owner and assigned contractor. Last saved cache was not overwritten.', 'wpcable' );
 		$result['ok']      = false;
+	} elseif ( (int) $comments_fetch['http'] >= 500 || ( 0 === (int) $comments_fetch['http'] && empty( $comments_fetch['loop_guard'] ) ) ) {
+		$result['state']   = 'error';
+		$result['message'] = __( 'Codeable read failed. Last saved cache was not overwritten.', 'wpcable' );
+		$result['ok']      = false;
+	} elseif ( $saved ) {
+		$result['state']   = 'partial';
+		$result['message'] = __( 'Saved description; comments were not updated. Last comments cache was not overwritten.', 'wpcable' );
+		$result['ok']      = true;
 	} else {
 		$result['state']   = 'error';
 		$result['message'] = __( 'Codeable read failed. Last saved cache was not overwritten.', 'wpcable' );
@@ -682,8 +766,37 @@ function wpcable_fetch_task_comments_page( $api, $task_id, $opts = array() ) {
 	$existing_items = isset( $opts['existing_items'] ) && is_array( $opts['existing_items'] ) ? $opts['existing_items'] : array();
 	$more           = ! empty( $opts['more'] );
 	$requested_limit = isset( $query['limit'] ) ? (int) $query['limit'] : 20;
+	$last_query_sig  = isset( $opts['last_query_sig'] ) ? (string) $opts['last_query_sig'] : '';
 
 	$path = 'tasks/' . $task_id . '/comments';
+	$query_sig = wpcable_comments_query_sig( $path, $query );
+	if ( $more && $last_query_sig && $query_sig === $last_query_sig ) {
+		return array(
+			'ok'                   => false,
+			'items'                => $existing_items,
+			'complete'             => false,
+			'partial'              => true,
+			'reason'               => __( 'The next comments request matched the last page already fetched. Not sent again.', 'wpcable' ),
+			'forbidden'            => false,
+			'http'                 => 0,
+			'calls'                => array(),
+			'limit'                => $requested_limit,
+			'offset'               => isset( $query['offset'] ) ? (int) $query['offset'] : 0,
+			'returned'             => count( $existing_items ),
+			'page_returned'        => 0,
+			'total'                => null,
+			'link'                 => '',
+			'link_sanitized'       => '',
+			'server_ignored_limit' => false,
+			'duplicate_only'       => true,
+			'loop_guard'           => true,
+			'next_replay'          => array( 'ok' => false, 'reason' => 'repeated_query' ),
+			'shape'                => array(),
+			'query_sig'            => $query_sig,
+			'retry_after'          => 0,
+		);
+	}
+
 	$res  = $api->get_with_meta( $path, $query );
 	$http = (int) $res['status'];
 	$link = isset( $res['link'] ) ? (string) $res['link'] : '';
@@ -731,8 +844,11 @@ function wpcable_fetch_task_comments_page( $api, $task_id, $opts = array() ) {
 		'link_sanitized'       => wpcable_sanitize_link_uri( $link_for_shape ),
 		'server_ignored_limit' => false,
 		'duplicate_only'       => false,
+		'loop_guard'           => false,
 		'next_replay'          => array( 'ok' => false ),
 		'shape'                => wpcable_comments_shape( isset( $res['body'] ) ? $res['body'] : null, isset( $res['headers'] ) ? $res['headers'] : array(), $link_for_shape ),
+		'query_sig'            => $query_sig,
+		'retry_after'          => isset( $res['retry_after'] ) ? (int) $res['retry_after'] : 0,
 	);
 
 	if ( 403 === $http ) {

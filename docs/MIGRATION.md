@@ -1,101 +1,67 @@
-# Migration and rollback — Expert Stats 0.4.6
+# Migration and rollback — Expert Stats 0.4.7
 
-This release stays inside the existing plugin directory and main file (`wp-codeable.php`). It is a patch of 0.4.5, not a separate app. Schema stays **0.0.6** (no new columns).
+This release stays inside the existing plugin directory and main file (`wp-codeable.php`). It is a patch of 0.4.6, not a separate app. Schema stays **0.0.6** (no new columns). A new option `wpcable_history_backfill` stores the job cursor (task ids and counts only — no tokens, no comment bodies).
 
 ## Stages on this branch
 
 1. **0.4.4** — Stats: one overview + one import-health; page overflow CSS; ZIP root `expertstatsplugin-master/`.
 2. **0.4.5** — Opt-in documented `GET /tasks/{id}` + `GET /tasks/{id}/comments`.
-3. **0.4.6** — Live mapping/paging fix (this ZIP): 50-item pages, Link replay onto `api.codeable.io`, keys-only shape, PKT DateTime, Load more.
+3. **0.4.6** — Live mapping/paging fix: 50-item pages, Link replay onto `api.codeable.io`, keys-only shape, PKT DateTime, Load more. Two WP ZIP uploads of 0.4.6 failed Cloudflare 520 (archive too heavy); live site stayed on 0.4.5.
+4. **0.4.7** — Resumable bulk comments backfill + lean production ZIP (this ZIP).
 
 ## What changes in the database
 
-Schema version moves **0.0.5 → 0.0.6** (additive `dbDelta`):
+Schema remains **0.0.6**. No new columns. Existing notes, flags, clients, amounts, transactions, and settings are left in place. There is no truncate. Failed/401/403/429 reads do **not** wipe a previously stored description/comments row.
 
-- `codeable_tasks.history_account_id` (Codeable account id that fetched the cache)
-- `codeable_tasks.history_meta_json` (source time, route, HTTP, partial/complete, Link metadata)
+New options (safe to delete on rollback):
 
-0.0.5 description/comments columns from 0.4.3 remain. Existing notes, flags, clients, amounts, transactions, and settings are left in place. There is no truncate. Failed/403 reads do **not** wipe a previously stored description/comments row.
+- `wpcable_history_backfill` — persistent cursor / progress
+- `wpcable_history_backfill_lock` — tick mutex
 
 ## Behavioral changes (not data)
 
-- Project drawer adds **Load from Codeable (read-only)**. It is a local WordPress ajax POST (`wpcable_load_task_history`) gated by `manage_options` + nonce. The only remote calls are documented GETs on the existing working host `https://api.codeable.io/` using the already-authorized account. Redirects are disabled.
-- First comments GET still sends documented `limit` + `offset`. One comments GET per click. If the server returns 50 rows for `limit=20`, do not loop `offset`. **Load more comments (read-only)** uses the stored `Link rel=next`.
-- `Link` path `/tasks/{id}/comments` on `api.codeable.io` or documented HOST `api.codeable.com` is replayed **only** on `api.codeable.io` (page/limit/offset/per_page integers from that Link). Token is never sent to `.com`. `/v1` and other hosts are not followed.
-- Completeness is never claimed unless X-Total-Count is met, 204, a short last page vs observed size, or X-Page-Count. Duplicate IDs stop pagination. A full page with no terminal signal stays **partial**.
-- Keys-only shape diagnostics (no body text) in the drawer. Missing `user` is “Author not in payload”, not a fake name. Timestamps use DateTime in the WP timezone (PKT when the site is Asia/Karachi) without changing PHP default TZ.
-- `private` absent on a comment → visibility **unknown**, not public.
-- Cache is account-scoped. Connected as a different Codeable id: hide. Disconnected: show saved authorized-account cache. WP admin only.
-- No auto bulk backfill on page views or hourly cron.
-- Attachments and reviews endpoints are not called.
+- Settings adds **Comments backfill (read-only)**. Start snapshots every imported `task_id` for the connected Codeable account and processes them with bounded WP-Cron ticks (default 8 GETs, 4 projects). Pause/resume keep the cursor. Already-complete caches for this account are skipped.
+- Same documented GETs as the project-drawer Load buttons. One comments GET per call; the tick repeats **Load more** until an evidence-backed terminal status (X-Total-Count, 204, short last page, X-Page-Count) or a stop (duplicate IDs, repeated query, unverified Link, page cap). A 50-item page is **not** complete.
+- 401 pauses the whole job. 403 is **denied**, distinct from empty (204) and complete. 429 uses `Retry-After` or exponential backoff. 5xx retries then records an error. Refresh queue / lock skips a backfill tick (no overlap).
+- Default WP-Cron only runs on site traffic. If `DISABLE_WP_CRON` is true, a system cron must hit `wp-cron.php` or use **Run one batch now**. The browser does not need to stay on Settings once WP-Cron is firing.
+- Comment timestamps always display in PKT (`Asia/Karachi`) even if the site timezone is empty. Author names and public/private stay unknown until live keys-only diagnostics show those fields — this plugin does not invent them.
+- Drawer Load / Load more, Stats, and Estimate are unchanged.
+- Production ZIP omits `tests/`, `docs/screenshots/`, `.git`, `.github`, `.cursor`, `node_modules`, and nested zip files. Plugin PHP/JS/CSS, CHANGELOG, and `docs/*.md` remain.
 
 ## Packaging (required ZIP root)
 
-All installable ZIPs MUST unpack to **`expertstatsplugin-master/wp-codeable.php`**. Version belongs in the plugin header and the ZIP **filename** only (`expertstatsplugin-0.4.6-hybrid.zip`). Never name the archive root `expertstatsplugin-0.4.6/` (or any other versioned folder): WordPress will install a **second, inactive** plugin and leave the live `expertstatsplugin-master/` copy untouched.
+All installable ZIPs MUST unpack to **`expertstatsplugin-master/wp-codeable.php`**. Version belongs in the plugin header and the ZIP **filename** only (`expertstatsplugin-0.4.7-hybrid.zip`). Never name the archive root `expertstatsplugin-0.4.7/`.
 
 Canonical command:
 
 ```
 ./scripts/package-zip.sh
-./scripts/package-zip.sh /path/to/expertstatsplugin-0.4.6-hybrid.zip
+./scripts/package-zip.sh /path/to/expertstatsplugin-0.4.7-hybrid.zip
 ```
 
-`tests/test-package-zip.php` (via `php tests/run.php`) builds a temp archive and asserts that root. If a versioned duplicate was already uploaded, deactivate it in Plugins and delete the **folder on disk** (or upload a corrected ZIP over the intended `expertstatsplugin-master/` directory). Do **not** use the WordPress plugin uninstaller / Delete on that duplicate — `uninstall.php` drops the **shared** `codeable_*` tables and options used by the active install.
+`tests/test-package-zip.php` (via `php tests/run.php`) builds a temp archive and asserts that root plus lean exclusions. If a versioned duplicate was already uploaded, deactivate it in Plugins and delete the **folder on disk**. Do **not** use the WordPress plugin uninstaller / Delete on that duplicate — `uninstall.php` drops the **shared** `codeable_*` tables and options used by the active install.
 
-## Install
+## Install / start / verify
 
 1. Keep the folder name `expertstatsplugin-master` so WordPress treats this as an update of the same plugin.
-2. Replace the plugin files with a ZIP whose root is `expertstatsplugin-master/wp-codeable.php`.
-3. Open **Codeable Stats**. Existing menu slugs stay:
-   - `codeable_transcactions_stats` (Overview / Stats)
-   - `codeable_tasks` (Projects)
-   - `codeable_estimate` (PERT estimate — math unchanged)
-   - `codeable_settings` (Settings)
-   - `codeable_clients`
-   - `codeable_opportunities`
+2. Overlay `expertstatsplugin-0.4.7-hybrid.zip` (root `expertstatsplugin-master/wp-codeable.php`). This ZIP is lean so it should clear Cloudflare 520 that blocked 0.4.6.
+3. Hard-refresh admin assets (file versions are `0.4.7`).
+4. Open **Codeable Stats → Settings**. Confirm Stats / Estimate / Projects still load.
+5. Small pagination validation (one project, e.g. 163186): **Load from Codeable**, then **Load more** once if offered. Expect appended IDs, PKT times, no invented authors.
+6. **Start comments backfill**. Optionally **Run one batch now** once. Confirm state moves from `running` and comment counts on a known project go past 50 if more pages exist. Leave the browser; WP-Cron continues if the site has traffic or system cron.
+7. Pause / Resume from Settings. Do not start Refresh at the same time (backfill skips those ticks).
 
-Hard-refresh admin assets (file versions are `0.4.6`).
-
-Do **not** Plugins → Delete a leftover `expertstatsplugin-0.4.3/` or `expertstatsplugin-0.4.4/` folder (`uninstall.php` drops shared tables). Overlay this ZIP onto `expertstatsplugin-master/`.
-
-## Next live validation (coordinator, same project 163186)
-
-Do **not** bulk-load. Overlay 0.4.6 onto `expertstatsplugin-master/`, hard-refresh:
-
-1. **Codeable Stats → Projects**. Open **163186 Ongoing maintenance for my site**.
-2. Click **Load from Codeable (read-only)** (re-reads first page; existing cache is replaced only on success).
-3. Confirm: description still present; comment times show **PKT**; authors stay empty unless `user.full_name` (or scalar `user`) is actually on the payload; visibility stays **unknown** unless `private` is present.
-4. Open **Response shape (keys only)** and note top-level / comment / nested `user` key names (no bodies). That is the evidence for any further mapping.
-5. If **Load more comments (read-only)** appears, click it once. Expect one GET on `api.codeable.io/tasks/163186/comments` with `page` copied from the stored Link (not a cross-domain request). New IDs should append; duplicates must not inflate the list.
-6. Keep partial until a terminal page. Do not bulk-load other projects.
-
-If 2015 Apiary docs differ from production, typical outcomes:
-
-| HTTP | Meaning in this plugin | Cache |
-| --- | --- | --- |
-| 200 | Map `description`; map comments (`text`, `user.full_name`, `published_at`; `private` if present else **unknown**) | Saved |
-| 204 | Empty comments list (complete only if first page) | Saved as present/empty when comments 204 |
-| 401 | Token expired / not authorized | **Not overwritten** |
-| 403 | Not owner and not assigned contractor (docs: full task / private comments denied) | **Not overwritten**; UI says 403, does not claim all private comments exist |
-| 404 | Task or comments collection not found | **Not overwritten** |
-| 5xx / network | Fetch failed | **Not overwritten** |
-| 200 + full page, no `Link rel=next` | Partial — more comments may exist | Saved, **not** marked complete |
-| `Link` to `api.codeable.com` or `/v1/tasks/…` | Not followed (token stays on `api.codeable.io`) | First page saved as partial |
-
-No new credentials are collected. Do not run live API tests from this cloud agent.
+Do **not** Plugins → Delete a leftover `expertstatsplugin-0.4.3/` or other versioned folder.
 
 ## Rollback
 
-1. Replace the plugin folder with the 0.4.5 ZIP (or 0.4.4).
-2. New 0.0.6 columns can remain unused; they are additive. Do **not** truncate tables to roll back — that would delete local notes.
-3. 0.4.4 ZIP: `/opt/cursor/artifacts/expertstatsplugin-0.4.4-hybrid.zip` (keep it).
+Overlay the previous **0.4.6** ZIP (`expertstatsplugin-0.4.6-hybrid.zip`, git `4173768`) or the live **0.4.5** ZIP onto `expertstatsplugin-master/`. Schema 0.0.6 is compatible. Delete options `wpcable_history_backfill` and `wpcable_history_backfill_lock` if you want a clean cursor. Cached description/comments rows stay. 0.4.6 comment DateTime used the WP timezone; 0.4.7 forces PKT.
 
-Uninstall (delete plugin from WP admin) still removes options/tables via `uninstall.php`. Do not use uninstall as a rollback.
+## Known limitations
 
-## Compatibility
-
-- Estimate page formulas are unchanged.
-- Settings options `wpcable_rate`, `wpcable_fee_type`, `wpcable_cancel_after_days`, `wpcable_tasks_stop_at_page` are unchanged.
-- Auth remains the existing encrypted `wpcable_auth_token` flow. Host stays `api.codeable.io` (documented HOST `api.codeable.com` is **not** used). Codeable access from this plugin is still read-only GETs.
-- Local notes/flags continue to save through `wpcable_update_task` with a nonce and `manage_options`.
-- List importer still uses `GET users/me/tasks/{filter}` and maps description/comments only when those keys are already on the list object.
+- Cloud agents do not call Codeable. First live proof is on the site after this ZIP is overlayed.
+- Author / visibility mapping remains unknown until a live keys-only shape is captured with working credentials. Do not infer names from earlier screenshots.
+- Default WP-Cron is visitor-triggered. Quiet sites need system cron to `wp-cron.php` or **Run one batch now**.
+- Full page with no terminal signal stays **partial**. `/v1` Links are not followed.
+- Attachments and reviews endpoints are not called.
+- Apiary lastUpdated **2015-03-02** — production may differ; see `docs/APIARY-CODEABLE.md`.

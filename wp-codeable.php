@@ -5,7 +5,7 @@
  * Plugin Name:       Codeable - Expert's Stats
  * Plugin URI:        https://github.com/codeablehq/blackbook/wiki/Expert-Stats-Plugin
  * Description:       Get your Codeable data
- * Version:           0.4.6
+ * Version:           0.4.7
  * Author:            Spyros Vlachopoulos
  * Contributors:      Panagiotis Synetos, John Leskas, Justin Frydman, Jonathan Bossenger, Rob Scott, Philipp Stracker, Peter Kakoma
  * Author URI:        https://codeable.io/developers/spyros-vlachopoulos/
@@ -40,6 +40,7 @@ require_once WPCABLE_CLASSES_DIR . '/object_cache.php';
 require_once WPCABLE_FUNCTIONS_DIR . '/helpers.php';
 require_once WPCABLE_FUNCTIONS_DIR . '/task-payload.php';
 require_once WPCABLE_FUNCTIONS_DIR . '/task-detail.php';
+require_once WPCABLE_FUNCTIONS_DIR . '/history-backfill.php';
 require_once WPCABLE_FUNCTIONS_DIR . '/admin-chrome.php';
 require_once WPCABLE_CLASSES_DIR . '/import_health.php';
 require_once WPCABLE_CLASSES_DIR . '/estimate.php';
@@ -62,12 +63,18 @@ require_once WPCABLE_FUNCTIONS_DIR . '/admin-opportunities.php';
  * race mark_tasks_lost() against KPI counts. Existing pending queues are
  * left untouched for resume.
  *
+ * Continues a running comments backfill if one is stored (bounded tick).
+ *
  * @return void
  */
 function wpcable_cronjob() {
 	codeable_maybe_refresh_data();
+	if ( function_exists( 'wpcable_history_backfill_tick' ) ) {
+		wpcable_history_backfill_tick();
+	}
 }
 add_action( 'wpcable_cronjob', 'wpcable_cronjob' );
+add_action( 'wpcable_history_backfill_tick', 'wpcable_history_backfill_cron' );
 
 /**
  * Create a scheduled event (if it does not exist already).
@@ -321,7 +328,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcablecss',
 		plugins_url( 'assets/css/wpcable.css', __FILE__ ),
 		[],
-		'0.4.6'
+		'0.4.7'
 	);
 	wp_enqueue_style(
 		'ratycss',
@@ -384,7 +391,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcablejs',
 		plugins_url( 'assets/js/wpcable.js', __FILE__ ),
 		[ 'wp-util' ],
-		'0.4.6',
+		'0.4.7',
 		true
 	);
 
@@ -392,7 +399,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcable-workspace',
 		plugins_url( 'assets/css/wpcable-workspace.css', __FILE__ ),
 		[ 'wpcablecss' ],
-		'0.4.6'
+		'0.4.7'
 	);
 
 	$workspace_hooks = [
@@ -406,7 +413,7 @@ function wpcable_admin_scripts( $hook ) {
 			'wpcable-workspace',
 			plugins_url( 'assets/js/wpcable-workspace.js', __FILE__ ),
 			[ 'jquery', 'wp-util', 'simplemde', 'wpcablejs' ],
-			'0.4.6',
+			'0.4.7',
 			true
 		);
 

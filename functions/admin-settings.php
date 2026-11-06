@@ -58,6 +58,25 @@ function codeable_load_settings_page() {
 		codeable_api_logout();
 	} elseif ( 'flush_data' === $action && wp_verify_nonce( $nonce, $action ) ) {
 		codeable_flush_all_data();
+	} elseif ( 'history_backfill_start' === $action && wp_verify_nonce( $nonce, $action ) ) {
+		$r = wpcable_history_backfill_start();
+		wp_safe_redirect( codeable_add_message_param( ! empty( $r['ok'] ) ? 'success' : 'error', $r['message'] ) );
+		exit;
+	} elseif ( 'history_backfill_pause' === $action && wp_verify_nonce( $nonce, $action ) ) {
+		$r = wpcable_history_backfill_pause( 'paused' );
+		wp_safe_redirect( codeable_add_message_param( 'success', $r['message'] ) );
+		exit;
+	} elseif ( 'history_backfill_resume' === $action && wp_verify_nonce( $nonce, $action ) ) {
+		$r = wpcable_history_backfill_resume();
+		wp_safe_redirect( codeable_add_message_param( ! empty( $r['ok'] ) ? 'success' : 'error', $r['message'] ) );
+		exit;
+	} elseif ( 'history_backfill_tick' === $action && wp_verify_nonce( $nonce, $action ) ) {
+		$r = wpcable_history_backfill_tick( array( 'force' => true ) );
+		$msg = ! empty( $r['skipped'] )
+			? __( 'Comments backfill tick skipped (inactive, waiting, or overlapping Refresh).', 'wpcable' )
+			: __( 'Ran one bounded comments backfill batch.', 'wpcable' );
+		wp_safe_redirect( codeable_add_message_param( 'success', $msg ) );
+		exit;
 	}
 }
 add_action( 'load-codeable-stats_page_codeable_settings', 'codeable_load_settings_page' );

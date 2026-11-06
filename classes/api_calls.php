@@ -10,6 +10,36 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Parse Retry-After (delta-seconds or HTTP date) from response headers.
+ *
+ * @param array $headers Header map.
+ * @return int Seconds to wait, 0 if absent/unusable.
+ */
+function wpcable_http_retry_after_seconds( $headers ) {
+	if ( ! is_array( $headers ) ) {
+		return 0;
+	}
+	$raw = '';
+	foreach ( $headers as $hk => $hv ) {
+		if ( 'retry-after' === strtolower( (string) $hk ) ) {
+			$raw = is_array( $hv ) ? (string) reset( $hv ) : (string) $hv;
+			break;
+		}
+	}
+	if ( '' === $raw ) {
+		return 0;
+	}
+	if ( preg_match( '/^[0-9]+$/', trim( $raw ) ) ) {
+		return (int) $raw;
+	}
+	$ts = strtotime( $raw );
+	if ( false === $ts ) {
+		return 0;
+	}
+	return max( 0, $ts - time() );
+}
+
+/**
  * Handles communication with the Codeable API.
  *
  * Tip: To find available endpoints, simply examine the codeable app in your browser
@@ -226,13 +256,14 @@ class wpcable_api_calls {
 	public function get_with_meta( $path, $query = array() ) {
 		$path = ltrim( (string) $path, '/' );
 		$out  = array(
-			'status'  => 0,
-			'body'    => null,
-			'headers' => array(),
-			'link'    => '',
-			'url'     => '',
-			'error'   => '',
-			'path'    => $path,
+			'status'      => 0,
+			'body'        => null,
+			'headers'     => array(),
+			'link'        => '',
+			'url'         => '',
+			'error'       => '',
+			'path'        => $path,
+			'retry_after' => 0,
 		);
 
 		if ( ! preg_match( '#^tasks/[A-Za-z0-9_-]+(/comments(/[A-Za-z0-9_-]+)?)?$#', $path ) ) {
@@ -246,7 +277,11 @@ class wpcable_api_calls {
 
 		$pre = apply_filters( 'wpcable_pre_http_get', null, $path, $query, $full_url );
 		if ( is_array( $pre ) ) {
-			return array_merge( $out, $pre, array( 'path' => $path, 'url' => isset( $pre['url'] ) ? $pre['url'] : $full_url ) );
+			$merged = array_merge( $out, $pre, array( 'path' => $path, 'url' => isset( $pre['url'] ) ? $pre['url'] : $full_url ) );
+			if ( empty( $merged['retry_after'] ) ) {
+				$merged['retry_after'] = wpcable_http_retry_after_seconds( isset( $merged['headers'] ) ? $merged['headers'] : array() );
+			}
+			return $merged;
 		}
 
 		if ( ! $this->auth_token_known() ) {
@@ -299,6 +334,7 @@ class wpcable_api_calls {
 			}
 		}
 		$out['link'] = $link;
+		$out['retry_after'] = wpcable_http_retry_after_seconds( $headers );
 
 		return $out;
 	}

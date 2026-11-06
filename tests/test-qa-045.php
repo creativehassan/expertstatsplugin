@@ -29,7 +29,7 @@ wpcable_assert( false !== strpos( $js, 'wpcable-load-history' ), 'drawer has Loa
 wpcable_assert( false !== strpos( $js, 'wpcable_load_task_history' ), 'drawer posts the local WP ajax action' );
 
 $php = file_get_contents( WPCABLE_TEST_ROOT . '/wp-codeable.php' );
-wpcable_assert( false !== strpos( $php, 'Version:           0.4.6' ), 'plugin header is 0.4.6' );
+wpcable_assert( false !== strpos( $php, 'Version:           0.4.7' ), 'plugin header is 0.4.7' );
 wpcable_assert( false !== strpos( $php, '0.0.6' ), 'schema 0.0.6 additive' );
 wpcable_assert( false !== strpos( $php, 'history_meta_json' ), 'history_meta_json column additive' );
 

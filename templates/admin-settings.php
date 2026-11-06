@@ -198,3 +198,6 @@
 		</div>
 	</section>
 </form>
+<?php if ( function_exists( 'wpcable_history_backfill_settings_card' ) ) : ?>
+	<?php wpcable_history_backfill_settings_card(); ?>
+<?php endif; ?>

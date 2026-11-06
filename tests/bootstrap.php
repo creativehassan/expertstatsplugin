@@ -247,6 +247,58 @@ function plugins_url( $path = '', $plugin = '' ) {
 	return 'https://example.test/wp-content/plugins/expertstatsplugin/' . ltrim( $path, '/' );
 }
 
+$wpcable_cron_events = array();
+$wpcable_spawn_cron  = 0;
+
+function wp_next_scheduled( $hook ) {
+	global $wpcable_cron_events;
+	foreach ( $wpcable_cron_events as $event ) {
+		if ( $event['hook'] === $hook ) {
+			return $event['timestamp'];
+		}
+	}
+	return false;
+}
+
+function wp_schedule_single_event( $timestamp, $hook, $args = array() ) {
+	global $wpcable_cron_events;
+	$wpcable_cron_events[] = array(
+		'timestamp' => (int) $timestamp,
+		'hook'      => $hook,
+		'args'      => $args,
+	);
+	return true;
+}
+
+function wp_schedule_event( $timestamp, $recurrence, $hook, $args = array() ) {
+	return wp_schedule_single_event( $timestamp, $hook, $args );
+}
+
+function wp_unschedule_event( $timestamp, $hook, $args = array() ) {
+	global $wpcable_cron_events;
+	unset( $timestamp, $args );
+	$kept = array();
+	foreach ( $wpcable_cron_events as $event ) {
+		if ( $event['hook'] !== $hook ) {
+			$kept[] = $event;
+		}
+	}
+	$wpcable_cron_events = $kept;
+}
+
+function wp_clear_scheduled_hook( $hook ) {
+	wp_unschedule_event( 0, $hook );
+}
+
+function spawn_cron() {
+	global $wpcable_spawn_cron;
+	$wpcable_spawn_cron++;
+}
+
+function wp_safe_redirect( $url ) {
+	unset( $url );
+}
+
 function add_action() {}
 function add_menu_page() {}
 function add_submenu_page() {}
@@ -420,6 +472,17 @@ class wpcable_test_wpdb {
 		}
 	}
 
+	public function get_col( $query ) {
+		try {
+			$stmt = $this->pdo->query( $this->mysql_to_sqlite( $query ) );
+			$cols = $stmt->fetchAll( PDO::FETCH_COLUMN, 0 );
+			return is_array( $cols ) ? $cols : array();
+		} catch ( Exception $e ) {
+			$this->last_error = $e->getMessage();
+			return array();
+		}
+	}
+
 	public function get_var( $query ) {
 		$stmt = $this->pdo->query( $this->mysql_to_sqlite( $query ) );
 		$value = $stmt->fetchColumn();
@@ -511,6 +574,7 @@ function wpcable_load_plugin_classes() {
 	require_once WPCABLE_TEST_ROOT . '/functions/helpers.php';
 	require_once WPCABLE_TEST_ROOT . '/functions/task-payload.php';
 	require_once WPCABLE_TEST_ROOT . '/functions/task-detail.php';
+	require_once WPCABLE_TEST_ROOT . '/functions/history-backfill.php';
 	require_once WPCABLE_TEST_ROOT . '/functions/admin-chrome.php';
 	require_once WPCABLE_TEST_ROOT . '/classes/import_health.php';
 	require_once WPCABLE_TEST_ROOT . '/classes/api_calls.php';

@@ -49,27 +49,35 @@ trap cleanup EXIT
 DEST="$STAGE/$PLUGIN_ROOT_NAME"
 mkdir -p "$DEST"
 
+# Lean production ZIP: omit tests, screenshot artifacts, VCS, and nested
+# node_modules. Keep plugin PHP/JS/CSS, CHANGELOG, and docs/*.md (no screenshots).
 EXCLUDES=(
 	.git
+	.github
 	.cursor
 	node_modules
-	tests/js/node_modules
+	tests
+	docs/screenshots
 	codeable-live-audit
 )
 
 if command -v rsync >/dev/null 2>&1; then
 	rsync -a \
 		--exclude '.git/' \
+		--exclude '.github/' \
 		--exclude '.cursor/' \
 		--exclude 'node_modules/' \
-		--exclude 'tests/js/node_modules/' \
+		--exclude 'tests/' \
+		--exclude 'docs/screenshots/' \
 		--exclude 'codeable-live-audit/' \
+		--exclude '*.zip' \
 		"$ROOT/" "$DEST/"
 else
 	cp -a "$ROOT/." "$DEST/"
 	for rel in "${EXCLUDES[@]}"; do
 		rm -rf "$DEST/$rel"
 	done
+	find "$DEST" -name '*.zip' -delete
 fi
 
 if [[ ! -f "$DEST/wp-codeable.php" ]]; then

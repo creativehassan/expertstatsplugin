@@ -51,7 +51,7 @@ $other_host = wpcable_comments_link_replay( 'https://example.net/tasks/4/comment
 wpcable_assert( empty( $other_host['ok'] ), 'arbitrary hosts are not replayed' );
 
 $php = file_get_contents( WPCABLE_TEST_ROOT . '/wp-codeable.php' );
-wpcable_assert( false !== strpos( $php, 'Version:           0.4.6' ), 'plugin header is 0.4.6' );
+wpcable_assert( false !== strpos( $php, 'Version:           0.4.7' ), 'plugin header is 0.4.7' );
 
 $iv  = str_repeat( 'a', 16 );
 $enc = openssl_encrypt( 'test-token', 'AES-256-CBC', AUTH_SALT, 0, $iv );

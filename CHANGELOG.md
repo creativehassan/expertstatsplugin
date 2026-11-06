@@ -1,5 +1,11 @@
 ### Changelog
 
+*0.4.7 (2026-11-06)*
+* Resumable **comments backfill** (Settings): every imported project’s description and all accessible comments pages, using the same documented read-only GETs as 0.4.6. WP-Cron single events plus the existing hourly hook; the browser does not need to stay open if WP-Cron runs (default WP-Cron still needs site traffic or a real cron to `wp-cron.php`). Pause/resume, account-scoped cursor, no overlap with Refresh or a second tick.
+* Pagination is not capped at 50. Bounded ticks (8 GETs) follow verified `Link rel=next` until an evidence-backed terminal status. Duplicate IDs / repeated queries stop the project as **partial**, not complete. 401 pauses the job; 403 is **denied** (not empty/complete); 429 honors Retry-After / backoff; 5xx retries then records an error. Successful caches are never overwritten on failure.
+* Comment timestamps always display in **PKT** (`Asia/Karachi`) even when the WordPress timezone is empty or misconfigured. Author/visibility still unknown until a live keys-only shape shows those fields.
+* Lean production ZIP omits `tests/`, `docs/screenshots/`, VCS, and nested `node_modules`. Root remains `expertstatsplugin-master/`. Stats / Estimate / drawer Load more unchanged.
+
 *0.4.6 (2026-11-06)*
 * Comments importer: one GET per click. A 50-item page despite `limit=20` stays **partial** (server ignored limit; do not loop offset). Duplicate-ID pages do not inflate the cache.
 * `Link rel=next` on `api.codeable.com` with documented `/tasks/{id}/comments` is **replayed on `api.codeable.io`** (path + page/limit/offset/per_page only). Token is never sent cross-domain. `/v1` and other hosts are not followed. **Load more comments (read-only)** continues from that stored Link.

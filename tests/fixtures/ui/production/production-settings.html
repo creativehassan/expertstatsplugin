@@ -185,9 +185,26 @@
 			<p class="submit"><input type="submit" class="button-primary" value="Save Changes" /></p>		</div>
 	</section>
 </form>
-	<div id="wpcable-import-health" class="codeable-last-refresh wpcable-import-health">
+		<section class="wpcable-settings-card wpcable-backfill-card">
+		<h2>Comments backfill (read-only)</h2>
+		<p>
+			Loads each imported project’s description and every accessible comments page into the local cache. Uses the same documented GETs as Load from Codeable. Nothing is posted to Codeable. Pagination stays evidence-backed: a 50-item page is not treated as complete.		</p>
+		<p class="description">
+			This job uses WordPress WP-Cron (a scheduled single event after each tick, plus the existing hourly hook). Default WP-Cron only runs when someone visits the site. The browser does not need to stay on this page, but the site needs traffic or a real cron hitting wp-cron.php. Run one batch now processes one bounded tick immediately.		</p>
+		<p class="description">
+			Author names and public/private visibility stay empty/unknown until a live keys-only shape shows those fields. This plugin does not invent them.		</p>
+		<ul class="wpcable-backfill-stats">
+			<li>State: idle</li>
+			<li>Snapshot: 0 imported · queued 0 · complete 0 · denied 403 0 · partial 0 · errors 0 · already complete 0</li>
+						<li>Requests this job: 0</li>
+											</ul>
+		<p class="wpcable-backfill-actions">
+																<span class="wpcable-sync-disabled">Sign in to start or resume backfill. Saved caches stay visible while disconnected.</span>
+					</p>
+	</section>
+		<div id="wpcable-import-health" class="codeable-last-refresh wpcable-import-health">
 		<strong>Import health (per source)</strong>
-				<ul class="wpcable-import-health-list">
+						<ul class="wpcable-import-health-list">
 											<li class="wpcable-import-health-cached">
 					<span class="wpcable-import-health-label">Expert profile (users/me)</span>
 					<span class="wpcable-import-health-status">Cached locally — no recorded attempt — Cached locally — no recorded attempt. This is not an instrumented import success.</span>

@@ -51,7 +51,26 @@ foreach ( $listing as $name ) {
 	}
 }
 
+$found_backfill = false;
+$found_tests    = false;
+$found_shots    = false;
+foreach ( $listing as $name ) {
+	$name = trim( $name );
+	if ( 'expertstatsplugin-master/functions/history-backfill.php' === $name ) {
+		$found_backfill = true;
+	}
+	if ( false !== strpos( $name, '/tests/' ) || preg_match( '#^expertstatsplugin-master/tests(/|$)#', $name ) ) {
+		$found_tests = true;
+	}
+	if ( false !== strpos( $name, 'docs/screenshots/' ) ) {
+		$found_shots = true;
+	}
+}
+
 wpcable_assert( $found_bootstrap, 'archive contains expertstatsplugin-master/wp-codeable.php' );
+wpcable_assert( $found_backfill, 'lean ZIP includes functions/history-backfill.php' );
+wpcable_assert( ! $found_tests, 'lean ZIP omits tests/' );
+wpcable_assert( ! $found_shots, 'lean ZIP omits docs/screenshots/' );
 wpcable_assert( empty( $other_roots ), 'every zip member is under expertstatsplugin-master/ (no extra top-level roots)' );
 wpcable_assert( empty( $bad_roots ), 'archive root is not versioned (not expertstatsplugin-0.x/)' );
 wpcable_assert( false === strpos( 'expertstatsplugin-master', $header_version ), 'folder name expertstatsplugin-master does not embed the header version' );

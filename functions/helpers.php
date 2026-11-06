@@ -454,6 +454,13 @@ function codeable_page_requires_login( $page_title ) {
 function codeable_api_logout() {
 	delete_option( 'wpcable_auth_token' );
 
+	if ( function_exists( 'wpcable_history_backfill_pause' ) ) {
+		$job = wpcable_history_backfill_job();
+		if ( wpcable_history_backfill_is_active( $job ) ) {
+			wpcable_history_backfill_pause( 'disconnected' );
+		}
+	}
+
 	// Flush object cache.
 	wpcable_cache::flush();
 }
@@ -510,6 +517,11 @@ function codeable_flush_all_data() {
 	delete_option( 'wpcable_account_details' );
 	delete_option( 'wpcable_import_health' );
 	delete_option( 'wpcable_opportunity_snapshot' );
+	delete_option( 'wpcable_history_backfill' );
+	delete_option( 'wpcable_history_backfill_lock' );
+	if ( function_exists( 'wpcable_history_backfill_unschedule' ) ) {
+		wpcable_history_backfill_unschedule();
+	}
 
 	codeable_api_logout();
 
@@ -656,6 +668,25 @@ function codeable_last_fetch_info() {
 				?>
 			</p>
 		<?php endif; ?>
+		<?php
+		if ( function_exists( 'wpcable_history_backfill_public' ) ) {
+			$backfill = wpcable_history_backfill_public();
+			if ( in_array( $backfill['state'], array( 'running', 'waiting_retry', 'paused', 'auth_paused' ), true ) ) {
+				echo '<p class="wpcable-sync-banner">';
+				echo esc_html(
+					sprintf(
+						/* translators: 1: job state, 2: done count, 3: snapshot count, 4: current task id */
+						__( 'Comments backfill %1$s — %2$d of %3$d projects processed (current %4$s). Settings starts/pauses this job. Default WP-Cron needs site traffic or a real cron to wp-cron.php.', 'wpcable' ),
+						$backfill['state'],
+						(int) $backfill['processed_count'],
+						(int) $backfill['snapshot_count'],
+						$backfill['current_id'] ? (string) (int) $backfill['current_id'] : '—'
+					)
+				);
+				echo '</p>';
+			}
+		}
+		?>
 		<ul class="wpcable-import-health-list">
 			<?php foreach ( wpcable_import_health::sources() as $source_key => $source_label ) : ?>
 				<?php $row = isset( $health[ $source_key ] ) ? $health[ $source_key ] : array(); ?>

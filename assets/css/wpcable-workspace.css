@@ -733,6 +733,23 @@
 	margin: 8px 0;
 }
 
+.wpcable-backfill-card {
+	grid-column: 1 / -1;
+}
+
+.wpcable-backfill-stats {
+	margin: 8px 0 12px;
+	padding-left: 1.2em;
+}
+
+.wpcable-backfill-stats li {
+	margin: 4px 0;
+}
+
+.wpcable-backfill-actions .button {
+	margin: 0 8px 8px 0;
+}
+
 .wpcable-app--compact .wpcable-kpi__value {
 	font-size: 22px;
 }
