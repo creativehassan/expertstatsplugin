@@ -25,10 +25,23 @@ New option (non-secret derived snapshot): `wpcable_opportunity_snapshot`. Delete
 - Description/comments UI renders genuine stored payload fields, or an honest missing/empty state. No new Codeable HTTP routes.
 - Overview, Projects, Clients, Opportunities, Estimate, and Settings share chrome and fluid width. Estimate formulas and Settings option keys are unchanged.
 
+## Packaging (required ZIP root)
+
+All installable ZIPs MUST unpack to **`expertstatsplugin-master/wp-codeable.php`**. Version belongs in the plugin header and the ZIP **filename** only (`expertstatsplugin-0.4.3-hybrid.zip`). Never name the archive root `expertstatsplugin-0.4.3/` (or any other versioned folder): WordPress will install a **second, inactive** plugin and leave the live `expertstatsplugin-master/` copy untouched.
+
+Canonical command:
+
+```
+./scripts/package-zip.sh
+./scripts/package-zip.sh /path/to/expertstatsplugin-0.4.3-hybrid.zip
+```
+
+`tests/test-package-zip.php` (via `php tests/run.php`) builds a temp archive and asserts that root. If a versioned duplicate was already uploaded, deactivate it in Plugins and delete the **folder on disk** (or upload a corrected ZIP over the intended `expertstatsplugin-master/` directory). Do **not** use the WordPress plugin uninstaller / Delete on that duplicate — `uninstall.php` drops the **shared** `codeable_*` tables and options used by the active install.
+
 ## Install
 
-1. Keep the folder name so WordPress treats this as an update of the same plugin.
-2. Replace the plugin files with the 0.4.3 ZIP, keeping `wp-codeable.php` as the bootstrap file.
+1. Keep the folder name `expertstatsplugin-master` so WordPress treats this as an update of the same plugin.
+2. Replace the plugin files with a ZIP whose root is `expertstatsplugin-master/wp-codeable.php`.
 3. Open **Codeable Stats**. Existing menu slugs stay:
    - `codeable_transcactions_stats` (Overview / Stats)
    - `codeable_tasks` (Projects)
