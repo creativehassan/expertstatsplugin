@@ -58,6 +58,9 @@ require __DIR__ . '/test-qa-046.php';
 echo "\n7h) 0.4.7 QA: resumable bulk comments backfill, PKT, lean ZIP\n";
 require __DIR__ . '/test-qa-047.php';
 
+echo "\n7i) 0.4.8 QA: is_private mapping and rejected-Link diagnostics\n";
+require __DIR__ . '/test-qa-048.php';
+
 echo "\n8) Production JS integration (jsdom + jQuery, no Codeable network)\n";
 $js_dir    = __DIR__ . '/js';
 $js_status = 0;

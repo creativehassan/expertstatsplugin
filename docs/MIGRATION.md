@@ -1,4 +1,16 @@
-# Migration and rollback — Expert Stats 0.4.7
+# Migration and rollback — Expert Stats 0.4.8
+
+This release stays inside the existing plugin directory and main file (`wp-codeable.php`). It is a patch of 0.4.7. Schema stays **0.0.6**. Overlay onto `expertstatsplugin-master/`. Do not start bulk until one project shows **Load more** or a verified next Link.
+
+## 0.4.8 behavior
+
+- Maps live `is_private` for visibility; keeps `is_contractors_only` distinct.
+- Shows sanitized rejected Link host/path/paging in the project drawer (no tokens/bodies). Does **not** follow a guessed path such as `/users/me/tasks/{id}/comments`.
+- Author: nested `user` if present; otherwise `user_id` plus a local account/client name only when that id is already stored. No extra Codeable GETs.
+- Overlay `expertstatsplugin-0.4.8-hybrid.zip` (root `expertstatsplugin-master/wp-codeable.php`). Hard-refresh admin assets (file versions are `0.4.8`). Re-click **Load from Codeable** on 163186; the drawer should now show sanitized host/path/paging of the rejected next Link. Capture that route before any allowlist change.
+- Rollback: overlay 0.4.7. Cached rows remain. Re-click **Load from Codeable** on 163186 to refresh mapping and the Link diagnostic.
+
+# 0.4.7 notes
 
 This release stays inside the existing plugin directory and main file (`wp-codeable.php`). It is a patch of 0.4.6, not a separate app. Schema stays **0.0.6** (no new columns). A new option `wpcable_history_backfill` stores the job cursor (task ids and counts only — no tokens, no comment bodies).
 
@@ -7,7 +19,8 @@ This release stays inside the existing plugin directory and main file (`wp-codea
 1. **0.4.4** — Stats: one overview + one import-health; page overflow CSS; ZIP root `expertstatsplugin-master/`.
 2. **0.4.5** — Opt-in documented `GET /tasks/{id}` + `GET /tasks/{id}/comments`.
 3. **0.4.6** — Live mapping/paging fix: 50-item pages, Link replay onto `api.codeable.io`, keys-only shape, PKT DateTime, Load more. Two WP ZIP uploads of 0.4.6 failed Cloudflare 520 (archive too heavy); live site stayed on 0.4.5.
-4. **0.4.7** — Resumable bulk comments backfill + lean production ZIP (this ZIP).
+4. **0.4.7** — Resumable bulk comments backfill + lean production ZIP. Live overlay succeeded.
+5. **0.4.8** — `is_private` mapping, local `user_id` author, sanitized rejected-Link diagnostics (this ZIP). Bulk still unstarted.
 
 ## What changes in the database
 

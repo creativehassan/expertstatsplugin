@@ -110,6 +110,46 @@
 		}
 	}
 
+	function linkNextDiagnostic(history) {
+		history = history || {};
+		var nxt = history.link_next || (history.shape && history.shape.link_next) || {};
+		var headers = history.paging_headers || (history.shape && history.shape.paging_headers) || {};
+		var html = '';
+		if (nxt && (nxt.path || nxt.host || nxt.sanitized || nxt.replay_reason)) {
+			var paging = nxt.paging || {};
+			var pagingBits = [];
+			['page', 'limit', 'offset', 'per_page'].forEach(function (k) {
+				if (typeof paging[k] !== 'undefined' && paging[k] !== null && paging[k] !== '') {
+					pagingBits.push(k + '=' + paging[k]);
+				}
+			});
+			html += '<p class="description wpcable-link-next">' + esc(
+				'Rejected/next Link (not followed; secrets stripped): host=' +
+					(nxt.host || (nxt.relative ? '(relative)' : '—')) +
+					' path=' + (nxt.path || '—') +
+					(pagingBits.length ? ' paging ' + pagingBits.join('&') : '') +
+					(nxt.replay_reason ? ' reason=' + nxt.replay_reason : '') +
+					(nxt.sanitized ? ' sanitized=' + nxt.sanitized : '')
+			) + '</p>';
+			if (nxt.other_query_keys && nxt.other_query_keys.length) {
+				html += '<p class="description">' + esc('Other Link query keys (values omitted): ' + nxt.other_query_keys.join(', ')) + '</p>';
+			}
+			if (nxt.credential_query_keys && nxt.credential_query_keys.length) {
+				html += '<p class="description">' + esc('Credential query keys stripped: ' + nxt.credential_query_keys.join(', ')) + '</p>';
+			}
+		}
+		var headerBits = [];
+		['x-total-count', 'x-records-per-page', 'x-page-count'].forEach(function (k) {
+			if (headers[k] !== null && typeof headers[k] !== 'undefined') {
+				headerBits.push(k + '=' + headers[k]);
+			}
+		});
+		if (headerBits.length) {
+			html += '<p class="description">' + esc('Paging headers: ' + headerBits.join(' · ')) + '</p>';
+		}
+		return html;
+	}
+
 	function historyPanels(history, workroomUrl) {
 		history = history || {};
 		var desc = history.description || {};
@@ -135,10 +175,16 @@
 				html += '<li class="wpcable-comment wpcable-comment--' + esc(vis) + '">';
 				html += '<span class="wpcable-comment__meta">';
 				html += esc((item && item.author) ? item.author : (cfg.i18n.authorMissing || 'Author not in payload'));
+				if (item && !item.author && item.user_id) {
+					html += ' · user_id ' + esc(String(item.user_id));
+				}
 				if (item && item.created_at) {
 					html += ' · ' + esc(item.created_at);
 				}
 				html += ' · ' + esc(vis);
+				if (item && item.is_contractors_only) {
+					html += ' · contractors_only';
+				}
 				html += '</span>';
 				html += '<div class="wpcable-comment__body">' + esc((item && item.body) || '') + '</div>';
 				html += '</li>';
@@ -147,6 +193,7 @@
 			if (comments.reason) {
 				html += '<p class="description">' + esc(comments.reason) + '</p>';
 			}
+			html += linkNextDiagnostic(history);
 		} else if (comments.empty) {
 			html += '<p class="wpcable-history-empty">' + esc(comments.reason || 'The saved import includes a comments field that was empty.') + '</p>';
 		} else {
@@ -179,7 +226,7 @@
 		} else {
 			html += '<p class="description">' + esc(cfg.i18n.loadHistoryDisconnected || 'Load from Codeable is off while disconnected. Saved data stays visible.') + '</p>';
 		}
-		if (history.shape && (history.shape.comment_keys || history.shape.envelope || history.shape.link)) {
+		if (history.shape && (history.shape.comment_keys || history.shape.envelope || history.shape.link || (history.link_next && history.link_next.path))) {
 			html += '<details class="wpcable-shape-debug"><summary>' + esc(cfg.i18n.shapeDebug || 'Response shape (keys only)') + '</summary>';
 			html += '<p class="description">' + esc('Envelope: ' + (history.shape.envelope || '—') + '. Item count: ' + (history.shape.item_count || 0) + '.') + '</p>';
 			if (history.shape.top_keys && history.shape.top_keys.length) {
@@ -195,9 +242,7 @@
 					html += '<p class="description">' + esc(k + ': ' + (n.kind || '') + extra) + '</p>';
 				});
 			}
-			if (history.shape.link) {
-				html += '<p class="description">' + esc('Sanitized Link: ' + history.shape.link) + '</p>';
-			}
+			html += linkNextDiagnostic(history);
 			html += '</details>';
 		}
 		html += '</section>';

@@ -582,6 +582,10 @@
 	color: var(--wpcable-muted);
 }
 
+.wpcable-link-next {
+	word-break: break-all;
+}
+
 .wpcable-filter-count {
 	font-weight: 400;
 	color: var(--wpcable-muted);

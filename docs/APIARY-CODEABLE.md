@@ -69,10 +69,11 @@ Do not call these from Expert Stats. No comments composer.
 - Switching host to `api.codeable.com`
 - Undocumented singular `/task/{id}` (third-party Chrome extension)
 
-## What 0.4.6 / 0.4.7 does with this
+## What 0.4.6 / 0.4.7 / 0.4.8 does with this
 
 - Adds opt-in **Load from Codeable (read-only)** for one imported `task_id` at a time (0.4.6: one comments GET per click).
 - 0.4.7 adds an explicit Settings **comments backfill** that repeats those same GETs across imported projects via WP-Cron. It is not started from page views. Cloud agents still make no live Codeable calls.
+- 0.4.8 maps live list `is_private` (not documented `private`) and exposes sanitized rejected `Link rel=next` host/path/paging. It does **not** follow undocumented next paths and does not start bulk.
 - Uses existing authorized account abstraction. Does not mint or extract credentials.
 - Caches successful bodies locally with account stamp and provenance.
 - Respects 403; does not overwrite good cache on errors. 401 pauses a running backfill.

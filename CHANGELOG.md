@@ -1,5 +1,11 @@
 ### Changelog
 
+*0.4.8 (2026-11-06)*
+* Live comments list on 163186 is a bare 50-item array: `id`, `task_id`, `user_id`, `text`, `is_private`, `created_at`, `updated_at`, `is_contractors_only`, `is_from_email`. **Visibility uses `is_private`**. `is_contractors_only` stays a separate flag (not folded into visibility). No nested `user` — author stays empty unless `user_id` matches the connected account or a saved client (local lookup only; no `GET /users/{id}`).
+* Rejected `Link rel=next` is shown in the drawer (host, path, integer page/limit/offset/per_page, sanitized URI). Secrets, userinfo, and non-paging values are omitted. Allowlist is **not** broadened from a path guess — Load more stays off until the captured route is documented `/tasks/{id}/comments`.
+* Paging headers (`X-Total-Count`, `X-Records-Per-Page`, `X-Page-Count`) are listed when present. Bulk backfill stays unstarted.
+* Lean ZIP, root `expertstatsplugin-master/`. Stats / Estimate unchanged.
+
 *0.4.7 (2026-11-06)*
 * Resumable **comments backfill** (Settings): every imported project’s description and all accessible comments pages, using the same documented read-only GETs as 0.4.6. WP-Cron single events plus the existing hourly hook; the browser does not need to stay open if WP-Cron runs (default WP-Cron still needs site traffic or a real cron to `wp-cron.php`). Pause/resume, account-scoped cursor, no overlap with Refresh or a second tick.
 * Pagination is not capped at 50. Bounded ticks (8 GETs) follow verified `Link rel=next` until an evidence-backed terminal status. Duplicate IDs / repeated queries stop the project as **partial**, not complete. 401 pauses the job; 403 is **denied** (not empty/complete); 429 honors Retry-After / backoff; 5xx retries then records an error. Successful caches are never overwritten on failure.

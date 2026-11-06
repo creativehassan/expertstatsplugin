@@ -45,13 +45,13 @@ wpcable_assert( ! empty( $com['ok'] ), 'documented .com /tasks/{id}/comments Lin
 wpcable_assert_equals( 'tasks/4/comments', $com['path'], 'replay path stays documented comments collection' );
 wpcable_assert_equals( 2, $com['query']['page'], 'page from Link is copied, not probed' );
 wpcable_assert( false === strpos( $com['sanitized'], 'secret' ), 'sanitized Link strips token query values' );
-wpcable_assert( false !== strpos( $com['sanitized'], 'redacted' ), 'secret query value is redacted' );
+wpcable_assert( in_array( 'access_token', $com['inspect']['credential_query_keys'], true ), 'credential query key name is recorded, not the value' );
 
 $other_host = wpcable_comments_link_replay( 'https://example.net/tasks/4/comments?page=2', 4 );
 wpcable_assert( empty( $other_host['ok'] ), 'arbitrary hosts are not replayed' );
 
 $php = file_get_contents( WPCABLE_TEST_ROOT . '/wp-codeable.php' );
-wpcable_assert( false !== strpos( $php, 'Version:           0.4.7' ), 'plugin header is 0.4.7' );
+wpcable_assert( false !== strpos( $php, 'Version:           0.4.8' ), 'plugin header is 0.4.8' );
 
 $iv  = str_repeat( 'a', 16 );
 $enc = openssl_encrypt( 'test-token', 'AES-256-CBC', AUTH_SALT, 0, $iv );

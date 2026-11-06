@@ -83,32 +83,111 @@ function wpcable_value_kind( $value ) {
 }
 
 /**
- * Strip credentials from a Link URI. Host + path + non-secret query only.
+ * Whether a query key looks like a credential.
+ *
+ * @param string $key Query key.
+ * @return bool
+ */
+function wpcable_link_query_key_is_secret( $key ) {
+	return (bool) preg_match( '/token|secret|auth|password|bearer|key|credential|access/i', (string) $key );
+}
+
+/**
+ * Integer paging params only (page/limit/offset/per_page).
+ *
+ * @param array $query Parsed query.
+ * @return array
+ */
+function wpcable_comments_paging_query( $query ) {
+	$safe = array();
+	if ( ! is_array( $query ) ) {
+		return $safe;
+	}
+	foreach ( array( 'page', 'limit', 'offset', 'per_page' ) as $k ) {
+		if ( isset( $query[ $k ] ) && is_scalar( $query[ $k ] ) && preg_match( '/^[0-9]+$/', (string) $query[ $k ] ) ) {
+			$safe[ $k ] = (int) $query[ $k ];
+		}
+	}
+	return $safe;
+}
+
+/**
+ * Keys-only inspection of a Link URI. Relative paths keep path + paging.
+ * Never includes userinfo, tokens, or non-paging query values.
+ *
+ * @param string $url URL or relative reference from Link.
+ * @return array
+ */
+function wpcable_inspect_link_uri( $url ) {
+	$out = array(
+		'host'              => '',
+		'path'              => '',
+		'paging'            => array(),
+		'sanitized'         => '',
+		'relative'          => false,
+		'userinfo_stripped' => false,
+		'credential_query_keys' => array(),
+		'other_query_keys'  => array(),
+	);
+	if ( ! is_string( $url ) ) {
+		return $out;
+	}
+	$url = trim( $url );
+	if ( '' === $url ) {
+		return $out;
+	}
+
+	$parts = wp_parse_url( $url );
+	if ( ! is_array( $parts ) ) {
+		return $out;
+	}
+	if ( ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) ) {
+		$out['userinfo_stripped'] = true;
+	}
+	if ( empty( $parts['host'] ) && empty( $parts['scheme'] ) && ! empty( $parts['path'] ) ) {
+		$out['relative'] = true;
+	}
+	$out['host'] = isset( $parts['host'] ) ? strtolower( (string) $parts['host'] ) : '';
+	$out['path'] = isset( $parts['path'] ) ? (string) $parts['path'] : '';
+
+	$query = array();
+	if ( ! empty( $parts['query'] ) ) {
+		parse_str( $parts['query'], $query );
+	}
+	if ( ! is_array( $query ) ) {
+		$query = array();
+	}
+	$out['paging'] = wpcable_comments_paging_query( $query );
+	foreach ( $query as $k => $v ) {
+		$k = (string) $k;
+		if ( wpcable_link_query_key_is_secret( $k ) ) {
+			$out['credential_query_keys'][] = $k;
+			continue;
+		}
+		if ( ! isset( $out['paging'][ $k ] ) ) {
+			$out['other_query_keys'][] = $k;
+		}
+	}
+
+	$q = $out['paging'] ? http_build_query( $out['paging'] ) : '';
+	if ( $out['host'] ) {
+		$scheme           = ! empty( $parts['scheme'] ) ? $parts['scheme'] : 'https';
+		$out['sanitized'] = $scheme . '://' . $out['host'] . $out['path'] . ( $q ? '?' . $q : '' );
+	} elseif ( $out['path'] ) {
+		$out['sanitized'] = $out['path'] . ( $q ? '?' . $q : '' );
+	}
+	return $out;
+}
+
+/**
+ * Strip credentials from a Link URI. Host + path + integer paging only.
  *
  * @param string $url URL.
  * @return string
  */
 function wpcable_sanitize_link_uri( $url ) {
-	if ( ! is_string( $url ) || '' === $url ) {
-		return '';
-	}
-	$parts = wp_parse_url( $url );
-	if ( ! is_array( $parts ) || empty( $parts['host'] ) ) {
-		return '';
-	}
-	$scheme = ! empty( $parts['scheme'] ) ? $parts['scheme'] : 'https';
-	$path   = isset( $parts['path'] ) ? $parts['path'] : '';
-	$query  = array();
-	if ( ! empty( $parts['query'] ) ) {
-		parse_str( $parts['query'], $query );
-		foreach ( $query as $k => $v ) {
-			if ( preg_match( '/token|secret|auth|password|bearer|key|credential|access/i', (string) $k ) ) {
-				$query[ $k ] = '[redacted]';
-			}
-		}
-	}
-	$q = $query ? http_build_query( $query ) : '';
-	return $scheme . '://' . $parts['host'] . $path . ( $q ? '?' . $q : '' );
+	$ins = wpcable_inspect_link_uri( $url );
+	return isset( $ins['sanitized'] ) ? (string) $ins['sanitized'] : '';
 }
 
 /**
@@ -144,25 +223,33 @@ function wpcable_link_is_same_host_comments( $url, $task_id ) {
  */
 function wpcable_comments_link_replay( $url, $task_id ) {
 	$task_id = (int) $task_id;
+	$inspect = wpcable_inspect_link_uri( $url );
 	$out     = array(
 		'ok'          => false,
 		'reason'      => '',
 		'path'        => '',
 		'query'       => array(),
-		'source_host' => '',
-		'sanitized'   => wpcable_sanitize_link_uri( $url ),
+		'source_host' => $inspect['host'],
+		'sanitized'   => $inspect['sanitized'],
+		'inspect'     => array(
+			'host'                  => $inspect['host'],
+			'path'                  => $inspect['path'],
+			'paging'                => $inspect['paging'],
+			'sanitized'             => $inspect['sanitized'],
+			'relative'              => ! empty( $inspect['relative'] ),
+			'credential_query_keys' => $inspect['credential_query_keys'],
+			'other_query_keys'      => $inspect['other_query_keys'],
+		),
 	);
-	$parts = wp_parse_url( $url );
-	if ( ! is_array( $parts ) || empty( $parts['host'] ) || empty( $parts['path'] ) ) {
-		$out['reason'] = 'unparseable';
+	if ( ! empty( $inspect['relative'] ) || '' === $inspect['host'] ) {
+		$out['reason'] = $inspect['path'] ? 'relative_no_host' : 'unparseable';
 		return $out;
 	}
-	$out['source_host'] = strtolower( $parts['host'] );
-	if ( ! in_array( $out['source_host'], array( 'api.codeable.io', 'api.codeable.com' ), true ) ) {
+	if ( ! in_array( $inspect['host'], array( 'api.codeable.io', 'api.codeable.com' ), true ) ) {
 		$out['reason'] = 'host_not_replayable';
 		return $out;
 	}
-	$path = $parts['path'];
+	$path = $inspect['path'];
 	if ( preg_match( '#^/v1/#i', $path ) ) {
 		$out['reason'] = 'v1_prefix_not_verified';
 		return $out;
@@ -172,20 +259,10 @@ function wpcable_comments_link_replay( $url, $task_id ) {
 		$out['reason'] = 'path_not_documented_comments';
 		return $out;
 	}
-	$query = array();
-	if ( ! empty( $parts['query'] ) ) {
-		parse_str( $parts['query'], $query );
-	}
-	$safe = array();
-	foreach ( array( 'page', 'limit', 'offset', 'per_page' ) as $k ) {
-		if ( isset( $query[ $k ] ) && is_scalar( $query[ $k ] ) && preg_match( '/^[0-9]+$/', (string) $query[ $k ] ) ) {
-			$safe[ $k ] = (int) $query[ $k ];
-		}
-	}
-	$out['ok']    = true;
-	$out['path']  = 'tasks/' . $task_id . '/comments';
-	$out['query'] = $safe;
-	$out['reason'] = ( 'api.codeable.io' === $out['source_host'] )
+	$out['ok']     = true;
+	$out['path']   = 'tasks/' . $task_id . '/comments';
+	$out['query']  = $inspect['paging'];
+	$out['reason'] = ( 'api.codeable.io' === $inspect['host'] )
 		? 'same_host_documented_path'
 		: 'replayed_onto_api.codeable.io';
 	return $out;
@@ -200,18 +277,44 @@ function wpcable_comments_link_replay( $url, $task_id ) {
  * @return array
  */
 function wpcable_comments_shape( $body, $headers = array(), $link = '' ) {
-	$shape = array(
+	$inspect = wpcable_inspect_link_uri( $link );
+	$shape   = array(
 		'envelope'        => '',
 		'top_keys'        => array(),
 		'item_count'      => 0,
 		'comment_keys'    => array(),
 		'nested'          => array(),
 		'headers_present' => array(),
-		'link'            => wpcable_sanitize_link_uri( $link ),
+		'link'            => $inspect['sanitized'],
+		'link_next'       => array(
+			'host'             => $inspect['host'],
+			'path'             => $inspect['path'],
+			'paging'           => $inspect['paging'],
+			'sanitized'        => $inspect['sanitized'],
+			'relative'              => ! empty( $inspect['relative'] ),
+			'credential_query_keys' => $inspect['credential_query_keys'],
+			'other_query_keys'      => $inspect['other_query_keys'],
+			'replay_ok'        => false,
+			'replay_reason'    => '',
+		),
+		'paging_headers'  => array(
+			'x-total-count'       => null,
+			'x-records-per-page'  => null,
+			'x-page-count'        => null,
+		),
 	);
 	if ( is_array( $headers ) ) {
 		foreach ( $headers as $hk => $hv ) {
-			$shape['headers_present'][] = strtolower( (string) $hk );
+			$lk = strtolower( (string) $hk );
+			$shape['headers_present'][] = $lk;
+			$val = is_array( $hv ) ? reset( $hv ) : $hv;
+			if ( 'x-total-count' === $lk && is_numeric( $val ) ) {
+				$shape['paging_headers']['x-total-count'] = (int) $val;
+			} elseif ( 'x-records-per-page' === $lk && is_numeric( $val ) ) {
+				$shape['paging_headers']['x-records-per-page'] = (int) $val;
+			} elseif ( 'x-page-count' === $lk && is_numeric( $val ) ) {
+				$shape['paging_headers']['x-page-count'] = (int) $val;
+			}
 		}
 	}
 	if ( ! is_array( $body ) ) {
@@ -241,6 +344,32 @@ function wpcable_comments_shape( $body, $headers = array(), $link = '' ) {
 			$shape['nested'][ (string) $k ] = $entry;
 		}
 	}
+	return $shape;
+}
+
+/**
+ * Stamp replay inspect onto a keys-only shape. No secrets or bodies.
+ *
+ * @param array $shape  Shape.
+ * @param array $replay Replay result.
+ * @return array
+ */
+function wpcable_comments_shape_attach_link( $shape, $replay ) {
+	if ( ! is_array( $shape ) ) {
+		$shape = array();
+	}
+	if ( ! isset( $shape['link_next'] ) || ! is_array( $shape['link_next'] ) ) {
+		$shape['link_next'] = array();
+	}
+	if ( isset( $replay['inspect'] ) && is_array( $replay['inspect'] ) ) {
+		$shape['link_next'] = array_merge( $shape['link_next'], $replay['inspect'] );
+	}
+	if ( isset( $replay['sanitized'] ) ) {
+		$shape['link_next']['sanitized'] = (string) $replay['sanitized'];
+		$shape['link']                   = (string) $replay['sanitized'];
+	}
+	$shape['link_next']['replay_ok']     = ! empty( $replay['ok'] );
+	$shape['link_next']['replay_reason'] = isset( $replay['reason'] ) ? (string) $replay['reason'] : '';
 	return $shape;
 }
 
@@ -802,6 +931,15 @@ function wpcable_fetch_task_comments_page( $api, $task_id, $opts = array() ) {
 	$link = isset( $res['link'] ) ? (string) $res['link'] : '';
 	$rels = wpcable_parse_link_header( $link );
 	$link_for_shape = ! empty( $rels['next'] ) ? $rels['next'] : $link;
+	$replay         = array(
+		'ok'        => false,
+		'reason'    => ! empty( $rels['next'] ) ? '' : 'no_next',
+		'sanitized' => wpcable_sanitize_link_uri( $link_for_shape ),
+		'inspect'   => wpcable_inspect_link_uri( $link_for_shape ),
+	);
+	if ( ! empty( $rels['next'] ) ) {
+		$replay = wpcable_comments_link_replay( $rels['next'], $task_id );
+	}
 	$calls = array(
 		array(
 			'path'   => $path,
@@ -841,12 +979,15 @@ function wpcable_fetch_task_comments_page( $api, $task_id, $opts = array() ) {
 		'page_returned'        => 0,
 		'total'                => $total,
 		'link'                 => $link,
-		'link_sanitized'       => wpcable_sanitize_link_uri( $link_for_shape ),
+		'link_sanitized'       => isset( $replay['sanitized'] ) ? (string) $replay['sanitized'] : wpcable_sanitize_link_uri( $link_for_shape ),
 		'server_ignored_limit' => false,
 		'duplicate_only'       => false,
 		'loop_guard'           => false,
-		'next_replay'          => array( 'ok' => false ),
-		'shape'                => wpcable_comments_shape( isset( $res['body'] ) ? $res['body'] : null, isset( $res['headers'] ) ? $res['headers'] : array(), $link_for_shape ),
+		'next_replay'          => $replay,
+		'shape'                => wpcable_comments_shape_attach_link(
+			wpcable_comments_shape( isset( $res['body'] ) ? $res['body'] : null, isset( $res['headers'] ) ? $res['headers'] : array(), $link_for_shape ),
+			$replay
+		),
 		'query_sig'            => $query_sig,
 		'retry_after'          => isset( $res['retry_after'] ) ? (int) $res['retry_after'] : 0,
 	);
@@ -904,11 +1045,8 @@ function wpcable_fetch_task_comments_page( $api, $task_id, $opts = array() ) {
 	$out['duplicate_only'] = $merged['duplicate_only'];
 	$out['returned']       = count( $merged['items'] );
 
-	$replay = array( 'ok' => false, 'reason' => 'no_next' );
-	if ( ! empty( $rels['next'] ) ) {
-		$replay = wpcable_comments_link_replay( $rels['next'], $task_id );
-	}
 	$out['next_replay'] = $replay;
+	$out['shape']       = wpcable_comments_shape_attach_link( $out['shape'], $replay );
 
 	$observed_size = $records_per_page ? $records_per_page : $page_returned;
 	$has_next      = ! empty( $replay['ok'] );
@@ -998,6 +1136,53 @@ function wpcable_fetch_task_comments_pages( $api, $task_id ) {
 }
 
 /**
+ * Resolve a comment author from already-stored local profile/clients only.
+ * Does not call Codeable.
+ *
+ * @param int $user_id Codeable user id.
+ * @return array {name, source}
+ */
+function wpcable_local_comment_author( $user_id ) {
+	$out     = array(
+		'name'   => '',
+		'source' => '',
+	);
+	$user_id = (int) $user_id;
+	if ( $user_id <= 0 ) {
+		return $out;
+	}
+
+	$account = wpcable_get_account_details();
+	$aid     = (int) wpcable_account_detail( $account, 'id', 0 );
+	if ( $aid && $aid === $user_id ) {
+		$full  = trim( (string) wpcable_account_detail( $account, 'full_name', '' ) );
+		$first = (string) wpcable_account_detail( $account, 'first_name', '' );
+		$last  = (string) wpcable_account_detail( $account, 'last_name', '' );
+		$name  = $full ? $full : trim( $first . ' ' . $last );
+		if ( $name ) {
+			$out['name']   = $name;
+			$out['source'] = 'local_account';
+			return $out;
+		}
+	}
+
+	global $wpdb;
+	if ( ! $wpdb ) {
+		return $out;
+	}
+	$table = $wpdb->prefix . 'codeable_clients';
+	$row   = $wpdb->get_row(
+		$wpdb->prepare( "SELECT full_name FROM {$table} WHERE client_id = %d LIMIT 1", $user_id ),
+		ARRAY_A
+	);
+	if ( is_array( $row ) && ! empty( $row['full_name'] ) ) {
+		$out['name']   = (string) $row['full_name'];
+		$out['source'] = 'local_client';
+	}
+	return $out;
+}
+
+/**
  * History for the drawer, with account scoping and load-action flags.
  *
  * @param array $task Task row.
@@ -1015,6 +1200,13 @@ function wpcable_task_history_for_display( $task = array() ) {
 			}
 			$raw = isset( $item['created_at'] ) ? $item['created_at'] : '';
 			$history['comments']['items'][ $i ]['created_at'] = wpcable_comment_datetime_display( $raw );
+			if ( empty( $item['author'] ) && ! empty( $item['user_id'] ) ) {
+				$mapped = wpcable_local_comment_author( $item['user_id'] );
+				if ( $mapped['name'] ) {
+					$history['comments']['items'][ $i ]['author']        = $mapped['name'];
+					$history['comments']['items'][ $i ]['author_source'] = $mapped['source'];
+				}
+			}
 		}
 	}
 
@@ -1030,6 +1222,18 @@ function wpcable_task_history_for_display( $task = array() ) {
 	$history['shape']           = ( isset( $meta['comments']['shape'] ) && is_array( $meta['comments']['shape'] ) )
 		? $meta['comments']['shape']
 		: array();
+	$history['link_next'] = array();
+	if ( ! empty( $history['shape']['link_next'] ) && is_array( $history['shape']['link_next'] ) ) {
+		$history['link_next'] = $history['shape']['link_next'];
+	} elseif ( ! empty( $meta['comments']['next_replay']['inspect'] ) && is_array( $meta['comments']['next_replay']['inspect'] ) ) {
+		$history['link_next'] = $meta['comments']['next_replay']['inspect'];
+		$history['link_next']['replay_ok']     = ! empty( $meta['comments']['next_replay']['ok'] );
+		$history['link_next']['replay_reason'] = isset( $meta['comments']['next_replay']['reason'] ) ? $meta['comments']['next_replay']['reason'] : '';
+		$history['link_next']['sanitized']     = isset( $meta['comments']['next_replay']['sanitized'] ) ? $meta['comments']['next_replay']['sanitized'] : '';
+	}
+	$history['paging_headers'] = ( isset( $history['shape']['paging_headers'] ) && is_array( $history['shape']['paging_headers'] ) )
+		? $history['shape']['paging_headers']
+		: array();
 
 	if ( ! $visible ) {
 		$history['description']['available'] = false;
@@ -1040,6 +1244,8 @@ function wpcable_task_history_for_display( $task = array() ) {
 		$history['comments']['reason']       = __( 'Saved comments belong to a different connected Codeable account and are not shown.', 'wpcable' );
 		$history['can_load_more']            = false;
 		$history['shape']                    = array();
+		$history['link_next']                = array();
+		$history['paging_headers']           = array();
 	}
 
 	$source = isset( $task['comments_source'] ) ? (string) $task['comments_source'] : '';

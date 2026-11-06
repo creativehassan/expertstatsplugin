@@ -101,9 +101,22 @@ function wpcable_payload_normalize_comment( $row ) {
 		$author_source = 'user';
 	}
 
-	$private = null;
-	if ( array_key_exists( 'private', $row ) ) {
-		$private = ! empty( $row['private'] );
+	$user_id = 0;
+	if ( isset( $row['user_id'] ) && is_numeric( $row['user_id'] ) ) {
+		$user_id = (int) $row['user_id'];
+	} elseif ( isset( $user['id'] ) && is_numeric( $user['id'] ) ) {
+		$user_id = (int) $user['id'];
+	}
+
+	// Live comments list uses is_private, not documented `private`.
+	$private        = null;
+	$private_source = '';
+	if ( array_key_exists( 'is_private', $row ) ) {
+		$private        = ! empty( $row['is_private'] );
+		$private_source = 'is_private';
+	} elseif ( array_key_exists( 'private', $row ) ) {
+		$private        = ! empty( $row['private'] );
+		$private_source = 'private';
 	}
 
 	$contractors_only = null;
@@ -111,13 +124,14 @@ function wpcable_payload_normalize_comment( $row ) {
 		$contractors_only = ! empty( $row['is_contractors_only'] );
 	}
 
+	$from_email = null;
+	if ( array_key_exists( 'is_from_email', $row ) ) {
+		$from_email = ! empty( $row['is_from_email'] );
+	}
+
 	$visibility = 'unknown';
 	if ( true === $private ) {
 		$visibility = 'private';
-	} elseif ( true === $contractors_only ) {
-		$visibility = 'contractors_only';
-	} elseif ( false === $private && false === $contractors_only ) {
-		$visibility = 'public';
 	} elseif ( false === $private ) {
 		$visibility = 'public';
 	}
@@ -135,16 +149,19 @@ function wpcable_payload_normalize_comment( $row ) {
 	}
 
 	return array(
-		'id'                 => $id,
-		'body'               => $body,
-		'author'             => $name,
-		'author_source'      => $author_source,
-		'role'               => isset( $user['role'] ) ? (string) $user['role'] : '',
-		'private'            => $private,
-		'is_contractors_only'=> $contractors_only,
-		'visibility'         => $visibility,
-		'edited'             => $edited,
-		'created_at'         => isset( $row['created_at'] ) ? (string) $row['created_at'] : ( isset( $row['published_at'] ) ? (string) $row['published_at'] : '' ),
+		'id'                  => $id,
+		'body'                => $body,
+		'author'              => $name,
+		'author_source'       => $author_source,
+		'user_id'             => $user_id,
+		'role'                => isset( $user['role'] ) ? (string) $user['role'] : '',
+		'private'             => $private,
+		'private_source'      => $private_source,
+		'is_contractors_only' => $contractors_only,
+		'is_from_email'       => $from_email,
+		'visibility'          => $visibility,
+		'edited'              => $edited,
+		'created_at'          => isset( $row['created_at'] ) ? (string) $row['created_at'] : ( isset( $row['published_at'] ) ? (string) $row['published_at'] : '' ),
 	);
 }
 

@@ -880,7 +880,7 @@ function wpcable_history_backfill_settings_card() {
 			<?php echo esc_html( $public['cron'] ); ?>
 		</p>
 		<p class="description">
-			<?php esc_html_e( 'Author names and public/private visibility stay empty/unknown until a live keys-only shape shows those fields. This plugin does not invent them.', 'wpcable' ); ?>
+			<?php esc_html_e( 'Do not start backfill until one project shows Load more or a verified next comments Link. Author names stay unknown unless a nested user is on the payload or the user_id matches the connected account / a saved client. Visibility uses is_private; is_contractors_only stays a separate flag.', 'wpcable' ); ?>
 		</p>
 		<ul class="wpcable-backfill-stats">
 			<li><?php echo esc_html( sprintf( __( 'State: %s', 'wpcable' ), $public['state'] ) ); ?></li>
