@@ -124,7 +124,9 @@
 				}
 			});
 			html += '<p class="description wpcable-link-next">' + esc(
-				'Rejected/next Link (not followed; secrets stripped): host=' +
+				(nxt.replay_ok
+					? 'Next Link (verified, same-host token; secrets stripped): host='
+					: 'Rejected Link (not followed; secrets stripped): host=') +
 					(nxt.host || (nxt.relative ? '(relative)' : '—')) +
 					' path=' + (nxt.path || '—') +
 					(pagingBits.length ? ' paging ' + pagingBits.join('&') : '') +
@@ -190,6 +192,16 @@
 				html += '</li>';
 			});
 			html += '</ol>';
+			if (comments.total) {
+				var progress = String(comments.items.length) + ' of ' + String(comments.total);
+				if (comments.records_per_page) {
+					progress += ' · ' + String(comments.records_per_page) + '/page';
+				}
+				if (comments.page_count) {
+					progress += ' · ' + String(comments.page_count) + ' pages';
+				}
+				html += '<p class="description wpcable-comment-progress">' + esc(progress) + '</p>';
+			}
 			if (comments.reason) {
 				html += '<p class="description">' + esc(comments.reason) + '</p>';
 			}

@@ -8,7 +8,7 @@
 require_once WPCABLE_TEST_ROOT . '/functions/admin-page.php';
 
 $php = file_get_contents( WPCABLE_TEST_ROOT . '/wp-codeable.php' );
-wpcable_assert( false !== strpos( $php, 'Version:           0.4.8' ), 'plugin header is current' );
+wpcable_assert( false !== strpos( $php, 'Version:           0.4.9' ), 'plugin header is current' );
 
 $stats_src = file_get_contents( WPCABLE_TEST_ROOT . '/functions/admin-page.php' );
 wpcable_assert( false === strpos( $stats_src, 'first-stats-row' ), 'legacy first-stats-row removed from Stats' );

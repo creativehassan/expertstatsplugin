@@ -1,5 +1,11 @@
 ### Changelog
 
+*0.4.9 (2026-11-06)*
+* Live 163186 next Link is root-relative `</tasks/163186/comments?page=2>` with `X-Total-Count: 674`, `X-Records-Per-Page: 50`, `X-Page-Count: 14`. That documented path is now resolved onto `api.codeable.io` with a strict integer `page` (same-host Bearer token). Limit/offset from the first GET is not reused, so page 2 cannot duplicate page 1.
+* Still rejected: scheme-relative `//host`, userinfo, fragments, `..` / percent-encoding, path-relative (no leading `/`), mismatched task ids, `/v1`, undocumented paths, arbitrary hosts.
+* Drawer shows `N of 674` using those paging headers. Manual **Load more** and resumable bulk both walk 14 pages to 674 unique ids, then evidence-backed complete. Bulk stays idle until started.
+* Lean ZIP, root `expertstatsplugin-master/`. Stats / Estimate unchanged.
+
 *0.4.8 (2026-11-06)*
 * Live comments list on 163186 is a bare 50-item array: `id`, `task_id`, `user_id`, `text`, `is_private`, `created_at`, `updated_at`, `is_contractors_only`, `is_from_email`. **Visibility uses `is_private`**. `is_contractors_only` stays a separate flag (not folded into visibility). No nested `user` — author stays empty unless `user_id` matches the connected account or a saved client (local lookup only; no `GET /users/{id}`).
 * Rejected `Link rel=next` is shown in the drawer (host, path, integer page/limit/offset/per_page, sanitized URI). Secrets, userinfo, and non-paging values are omitted. Allowlist is **not** broadened from a path guess — Load more stays off until the captured route is documented `/tasks/{id}/comments`.

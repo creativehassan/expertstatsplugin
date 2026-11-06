@@ -7,7 +7,7 @@
  */
 
 $php = file_get_contents( WPCABLE_TEST_ROOT . '/wp-codeable.php' );
-wpcable_assert( false !== strpos( $php, 'Version:           0.4.8' ), 'plugin header is 0.4.8' );
+wpcable_assert( false !== strpos( $php, 'Version:           0.4.9' ), 'plugin header is 0.4.9' );
 wpcable_assert( false === strpos( file_get_contents( WPCABLE_TEST_ROOT . '/functions/task-detail.php' ), '#^/users/me/tasks/' ), 'allowlist is not broadened to /users/me/tasks from a path guess' );
 
 $live = wpcable_payload_normalize_comment(
@@ -52,8 +52,10 @@ $unknown = wpcable_payload_normalize_comment(
 wpcable_assert_equals( 'unknown', $unknown['visibility'], 'missing is_private stays unknown' );
 
 $rel = wpcable_comments_link_replay( '/tasks/15/comments?page=2&access_token=secret', 15 );
-wpcable_assert( empty( $rel['ok'] ), 'relative Link is not replayed (no host guess)' );
-wpcable_assert_equals( 'relative_no_host', $rel['reason'], 'relative Link reason is relative_no_host' );
+wpcable_assert( ! empty( $rel['ok'] ), 'documented root-relative Link is replayed onto api.codeable.io' );
+wpcable_assert_equals( 'resolved_root_relative_onto_api.codeable.io', $rel['reason'], 'relative Link reason is resolved_root_relative' );
+wpcable_assert_equals( 'tasks/15/comments', $rel['path'], 'replay path stays documented comments collection' );
+wpcable_assert_equals( array( 'page' => 2 ), $rel['query'], 'root-relative follow query is only integer page' );
 wpcable_assert_equals( '/tasks/15/comments', $rel['inspect']['path'], 'relative path is exposed' );
 wpcable_assert_equals( 2, $rel['inspect']['paging']['page'], 'relative paging page is exposed' );
 wpcable_assert( false === strpos( $rel['sanitized'], 'secret' ), 'relative sanitized omits token' );

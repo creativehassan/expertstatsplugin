@@ -26,7 +26,7 @@ wpcable_assert( false !== strpos( $leg, "jQuery('.wrap.wpcable-workspace').lengt
 $tasks_src = file_get_contents( WPCABLE_TEST_ROOT . '/classes/tasks.php' );
 wpcable_assert( false === strpos( $tasks_src, 'date_default_timezone_set' ), 'sanitize_task never changes PHP default timezone' );
 
-wpcable_assert( false !== strpos( $php, 'Version:           0.4.8' ), 'plugin header is 0.4.8' );
+wpcable_assert( false !== strpos( $php, 'Version:           0.4.9' ), 'plugin header is 0.4.9' );
 
 $estimate_js = file_get_contents( WPCABLE_TEST_ROOT . '/templates/admin-estimate.php' );
 wpcable_assert( false !== strpos( $estimate_js, 'var estimate_hours_standard    = (optimistic + 4 * likely + pessimistic) / 6;' ), 'standard PERT formula unchanged' );

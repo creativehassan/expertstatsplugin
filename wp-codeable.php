@@ -5,7 +5,7 @@
  * Plugin Name:       Codeable - Expert's Stats
  * Plugin URI:        https://github.com/codeablehq/blackbook/wiki/Expert-Stats-Plugin
  * Description:       Get your Codeable data
- * Version:           0.4.8
+ * Version:           0.4.9
  * Author:            Spyros Vlachopoulos
  * Contributors:      Panagiotis Synetos, John Leskas, Justin Frydman, Jonathan Bossenger, Rob Scott, Philipp Stracker, Peter Kakoma
  * Author URI:        https://codeable.io/developers/spyros-vlachopoulos/
@@ -328,7 +328,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcablecss',
 		plugins_url( 'assets/css/wpcable.css', __FILE__ ),
 		[],
-		'0.4.8'
+		'0.4.9'
 	);
 	wp_enqueue_style(
 		'ratycss',
@@ -391,7 +391,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcablejs',
 		plugins_url( 'assets/js/wpcable.js', __FILE__ ),
 		[ 'wp-util' ],
-		'0.4.8',
+		'0.4.9',
 		true
 	);
 
@@ -399,7 +399,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcable-workspace',
 		plugins_url( 'assets/css/wpcable-workspace.css', __FILE__ ),
 		[ 'wpcablecss' ],
-		'0.4.8'
+		'0.4.9'
 	);
 
 	$workspace_hooks = [
@@ -413,7 +413,7 @@ function wpcable_admin_scripts( $hook ) {
 			'wpcable-workspace',
 			plugins_url( 'assets/js/wpcable-workspace.js', __FILE__ ),
 			[ 'jquery', 'wp-util', 'simplemde', 'wpcablejs' ],
-			'0.4.8',
+			'0.4.9',
 			true
 		);
 

@@ -112,6 +112,80 @@ function wpcable_comments_paging_query( $query ) {
 }
 
 /**
+ * Query used to follow a verified next Link.
+ * When the Link is page-based, send only that integer page — never the
+ * original limit/offset first-page request, which would duplicate page 1.
+ *
+ * @param array $query Paging query.
+ * @return array
+ */
+function wpcable_comments_follow_query( $query ) {
+	$safe = wpcable_comments_paging_query( $query );
+	if ( isset( $safe['page'] ) && (int) $safe['page'] >= 1 ) {
+		return array( 'page' => (int) $safe['page'] );
+	}
+	unset( $safe['page'] );
+	return $safe;
+}
+
+/**
+ * Raw-string safety for a Link URL before host/path allowlisting.
+ * Rejects scheme-relative //host, userinfo, fragments, traversal, and encoding.
+ *
+ * @param string $url Raw Link URI.
+ * @return array {ok, reason, root_relative}
+ */
+function wpcable_comments_link_raw_safety( $url ) {
+	$out = array(
+		'ok'            => false,
+		'reason'        => '',
+		'root_relative' => false,
+	);
+	if ( ! is_string( $url ) ) {
+		$out['reason'] = 'unparseable';
+		return $out;
+	}
+	$url = trim( $url );
+	if ( '' === $url ) {
+		$out['reason'] = 'unparseable';
+		return $out;
+	}
+	if ( false !== strpos( $url, "\0" ) || false !== strpos( $url, '\\' ) ) {
+		$out['reason'] = 'unsafe_relative_path';
+		return $out;
+	}
+	if ( 0 === strpos( $url, '//' ) ) {
+		$out['reason'] = 'scheme_relative_rejected';
+		return $out;
+	}
+	if ( false !== strpos( $url, '#' ) ) {
+		$out['reason'] = 'fragment_rejected';
+		return $out;
+	}
+	if ( false !== strpos( $url, '@' ) ) {
+		$out['reason'] = 'userinfo_rejected';
+		return $out;
+	}
+	if ( preg_match( '#^[a-z][a-z0-9+.-]*:#i', $url ) ) {
+		$out['ok'] = true;
+		return $out;
+	}
+	if ( '/' !== substr( $url, 0, 1 ) ) {
+		$out['reason'] = 'not_root_relative';
+		return $out;
+	}
+	$qpos = strpos( $url, '?' );
+	$path = false === $qpos ? $url : substr( $url, 0, $qpos );
+	if ( false !== strpos( $path, '%' ) || false !== strpos( $path, '..' ) || false !== strpos( $path, './' ) ) {
+		$out['reason'] = 'unsafe_relative_path';
+		return $out;
+	}
+	$out['ok']            = true;
+	$out['root_relative'] = true;
+	return $out;
+}
+
+/**
  * Keys-only inspection of a Link URI. Relative paths keep path + paging.
  * Never includes userinfo, tokens, or non-paging query values.
  *
@@ -224,6 +298,7 @@ function wpcable_link_is_same_host_comments( $url, $task_id ) {
 function wpcable_comments_link_replay( $url, $task_id ) {
 	$task_id = (int) $task_id;
 	$inspect = wpcable_inspect_link_uri( $url );
+	$safety  = wpcable_comments_link_raw_safety( is_string( $url ) ? $url : '' );
 	$out     = array(
 		'ok'          => false,
 		'reason'      => '',
@@ -237,10 +312,44 @@ function wpcable_comments_link_replay( $url, $task_id ) {
 			'paging'                => $inspect['paging'],
 			'sanitized'             => $inspect['sanitized'],
 			'relative'              => ! empty( $inspect['relative'] ),
+			'root_relative'         => ! empty( $safety['root_relative'] ),
 			'credential_query_keys' => $inspect['credential_query_keys'],
 			'other_query_keys'      => $inspect['other_query_keys'],
 		),
 	);
+	if ( empty( $safety['ok'] ) ) {
+		$out['reason'] = $safety['reason'] ? $safety['reason'] : 'unparseable';
+		return $out;
+	}
+
+	$path = $inspect['path'];
+	if ( preg_match( '#^/v1/#i', $path ) ) {
+		$out['reason'] = 'v1_prefix_not_verified';
+		return $out;
+	}
+
+	if ( ! empty( $safety['root_relative'] ) ) {
+		if ( preg_match( '#^/tasks/([0-9]+)/comments/?$#', $path, $m ) ) {
+			if ( (int) $m[1] !== $task_id ) {
+				$out['reason'] = 'task_id_mismatch';
+				return $out;
+			}
+		} else {
+			$out['reason'] = 'path_not_documented_comments';
+			return $out;
+		}
+		$follow = wpcable_comments_follow_query( $inspect['paging'] );
+		if ( empty( $follow['page'] ) || (int) $follow['page'] < 1 ) {
+			$out['reason'] = 'relative_page_not_integer';
+			return $out;
+		}
+		$out['ok']     = true;
+		$out['path']   = 'tasks/' . $task_id . '/comments';
+		$out['query']  = array( 'page' => (int) $follow['page'] );
+		$out['reason'] = 'resolved_root_relative_onto_api.codeable.io';
+		return $out;
+	}
+
 	if ( ! empty( $inspect['relative'] ) || '' === $inspect['host'] ) {
 		$out['reason'] = $inspect['path'] ? 'relative_no_host' : 'unparseable';
 		return $out;
@@ -249,19 +358,18 @@ function wpcable_comments_link_replay( $url, $task_id ) {
 		$out['reason'] = 'host_not_replayable';
 		return $out;
 	}
-	$path = $inspect['path'];
-	if ( preg_match( '#^/v1/#i', $path ) ) {
-		$out['reason'] = 'v1_prefix_not_verified';
-		return $out;
-	}
 	$id = preg_quote( (string) $task_id, '#' );
 	if ( ! preg_match( '#^/tasks/' . $id . '/comments/?$#', $path ) ) {
+		if ( preg_match( '#^/tasks/([0-9]+)/comments/?$#', $path ) ) {
+			$out['reason'] = 'task_id_mismatch';
+			return $out;
+		}
 		$out['reason'] = 'path_not_documented_comments';
 		return $out;
 	}
 	$out['ok']     = true;
 	$out['path']   = 'tasks/' . $task_id . '/comments';
-	$out['query']  = $inspect['paging'];
+	$out['query']  = wpcable_comments_follow_query( $inspect['paging'] );
 	$out['reason'] = ( 'api.codeable.io' === $inspect['host'] )
 		? 'same_host_documented_path'
 		: 'replayed_onto_api.codeable.io';
@@ -767,7 +875,7 @@ function wpcable_load_task_history_run( $task_id, $args = array() ) {
 			return $result;
 		}
 		$next_query = isset( $meta['comments']['next_replay']['query'] ) && is_array( $meta['comments']['next_replay']['query'] )
-			? $meta['comments']['next_replay']['query']
+			? wpcable_comments_follow_query( $meta['comments']['next_replay']['query'] )
 			: array();
 	}
 
@@ -821,6 +929,8 @@ function wpcable_load_task_history_run( $task_id, $args = array() ) {
 		'returned'              => $comments_fetch['returned'],
 		'page_returned'         => $comments_fetch['page_returned'],
 		'total'                 => $comments_fetch['total'],
+		'records_per_page'      => isset( $comments_fetch['records_per_page'] ) ? $comments_fetch['records_per_page'] : null,
+		'page_count'            => isset( $comments_fetch['page_count'] ) ? $comments_fetch['page_count'] : null,
 		'link'                  => $comments_fetch['link_sanitized'],
 		'server_ignored_limit'  => $comments_fetch['server_ignored_limit'],
 		'duplicate_only'        => $comments_fetch['duplicate_only'],
@@ -892,6 +1002,9 @@ function wpcable_load_task_history_run( $task_id, $args = array() ) {
 function wpcable_fetch_task_comments_page( $api, $task_id, $opts = array() ) {
 	$task_id        = (int) $task_id;
 	$query          = ( isset( $opts['query'] ) && is_array( $opts['query'] ) ) ? $opts['query'] : array( 'limit' => 20, 'offset' => 0 );
+	if ( isset( $query['page'] ) ) {
+		$query = wpcable_comments_follow_query( $query );
+	}
 	$existing_items = isset( $opts['existing_items'] ) && is_array( $opts['existing_items'] ) ? $opts['existing_items'] : array();
 	$more           = ! empty( $opts['more'] );
 	$requested_limit = isset( $query['limit'] ) ? (int) $query['limit'] : 20;
@@ -978,6 +1091,8 @@ function wpcable_fetch_task_comments_page( $api, $task_id, $opts = array() ) {
 		'returned'             => count( $existing_items ),
 		'page_returned'        => 0,
 		'total'                => $total,
+		'records_per_page'     => $records_per_page,
+		'page_count'           => $page_count,
 		'link'                 => $link,
 		'link_sanitized'       => isset( $replay['sanitized'] ) ? (string) $replay['sanitized'] : wpcable_sanitize_link_uri( $link_for_shape ),
 		'server_ignored_limit' => false,
@@ -1070,7 +1185,9 @@ function wpcable_fetch_task_comments_page( $api, $task_id, $opts = array() ) {
 	if ( $has_next ) {
 		$out['partial']  = true;
 		$out['complete'] = false;
-		if ( $out['server_ignored_limit'] ) {
+		if ( 'resolved_root_relative_onto_api.codeable.io' === $replay['reason'] ) {
+			$out['reason'] = __( 'Saved this comments page. Root-relative Link rel=next /tasks/{id}/comments?page= is replayed on api.codeable.io only (same-host token). Limit/offset from the first request is not reused. Not marked complete.', 'wpcable' );
+		} elseif ( $out['server_ignored_limit'] ) {
 			$out['reason'] = __( 'Saved this comments page. The server returned more rows than the requested limit, so limit/offset was not used to guess the next page. Use Load more (read-only) for the verified Link on api.codeable.io. Not marked complete.', 'wpcable' );
 		} elseif ( 'replayed_onto_api.codeable.io' === $replay['reason'] ) {
 			$out['reason'] = __( 'Saved this comments page. Link rel=next was on another documented host; the path/query will be replayed on api.codeable.io only (token is not sent cross-domain). Not marked complete.', 'wpcable' );
@@ -1088,6 +1205,10 @@ function wpcable_fetch_task_comments_page( $api, $task_id, $opts = array() ) {
 			$out['reason'] = __( 'Link rel=next uses a /v1 prefix, which is not a verified documented path, so it was not followed. This page is partial.', 'wpcable' );
 		} elseif ( 'host_not_replayable' === $why ) {
 			$out['reason'] = __( 'Link rel=next host is not api.codeable.io / api.codeable.com, so it was not followed (no cross-domain token). This page is partial.', 'wpcable' );
+		} elseif ( in_array( $why, array( 'scheme_relative_rejected', 'userinfo_rejected', 'fragment_rejected', 'unsafe_relative_path', 'not_root_relative' ), true ) ) {
+			$out['reason'] = __( 'Link rel=next is not a safe root-relative /tasks/{id}/comments URL, so it was not followed (no cross-domain token). This page is partial.', 'wpcable' );
+		} elseif ( 'task_id_mismatch' === $why ) {
+			$out['reason'] = __( 'Link rel=next task id does not match this project, so it was not followed. This page is partial.', 'wpcable' );
 		} else {
 			$out['reason'] = __( 'Link rel=next is not the documented /tasks/{id}/comments path, so it was not followed (no cross-domain token). This page is partial.', 'wpcable' );
 		}
@@ -1246,7 +1367,19 @@ function wpcable_task_history_for_display( $task = array() ) {
 		$history['shape']                    = array();
 		$history['link_next']                = array();
 		$history['paging_headers']           = array();
+		$meta = array();
 	}
+
+	$history['comments']['saved_count'] = is_array( $history['comments']['items'] ) ? count( $history['comments']['items'] ) : 0;
+	$history['comments']['total'] = ( isset( $meta['comments']['total'] ) && is_numeric( $meta['comments']['total'] ) )
+		? (int) $meta['comments']['total']
+		: ( isset( $history['paging_headers']['x-total-count'] ) && is_numeric( $history['paging_headers']['x-total-count'] ) ? (int) $history['paging_headers']['x-total-count'] : null );
+	$history['comments']['records_per_page'] = ( isset( $meta['comments']['records_per_page'] ) && is_numeric( $meta['comments']['records_per_page'] ) )
+		? (int) $meta['comments']['records_per_page']
+		: ( isset( $history['paging_headers']['x-records-per-page'] ) && is_numeric( $history['paging_headers']['x-records-per-page'] ) ? (int) $history['paging_headers']['x-records-per-page'] : null );
+	$history['comments']['page_count'] = ( isset( $meta['comments']['page_count'] ) && is_numeric( $meta['comments']['page_count'] ) )
+		? (int) $meta['comments']['page_count']
+		: ( isset( $history['paging_headers']['x-page-count'] ) && is_numeric( $history['paging_headers']['x-page-count'] ) ? (int) $history['paging_headers']['x-page-count'] : null );
 
 	$source = isset( $task['comments_source'] ) ? (string) $task['comments_source'] : '';
 	if ( ! empty( $meta['comments']['reason'] ) && ( empty( $history['comments']['reason'] ) || 0 === strpos( $source, 'GET ' ) ) ) {

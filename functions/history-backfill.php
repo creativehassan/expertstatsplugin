@@ -129,7 +129,7 @@ function wpcable_history_backfill_public( $job = null ) {
 	$job = is_array( $job ) ? array_merge( wpcable_history_backfill_blank_job(), $job ) : wpcable_history_backfill_job();
 	$queued = count( $job['queued_ids'] ) + ( $job['current_id'] > 0 ? 1 : 0 );
 	$finished_buckets = count( $job['done_ids'] ) + count( $job['denied_ids'] ) + count( $job['partial_ids'] ) + count( $job['error_ids'] ) + count( $job['skipped_complete_ids'] );
-	return array(
+	$out = array(
 		'state'                => $job['state'],
 		'account_id'           => (string) $job['account_id'],
 		'current_id'           => (int) $job['current_id'],
@@ -152,7 +152,23 @@ function wpcable_history_backfill_public( $job = null ) {
 		'overlap_skipped'      => (int) $job['overlap_skipped'],
 		'honest_complete'      => ( 'finished' === $job['state'] && empty( $job['partial_ids'] ) && empty( $job['error_ids'] ) && empty( $job['denied_ids'] ) && empty( $job['queued_ids'] ) && empty( $job['current_id'] ) ),
 		'cron'                 => wpcable_history_backfill_cron_note(),
+		'current_comments_saved' => 0,
+		'current_comments_total' => null,
+		'current_records_per_page' => null,
+		'current_page_count'   => null,
 	);
+	if ( $job['current_id'] > 0 && class_exists( 'wpcable_tasks' ) ) {
+		$repo = new wpcable_tasks();
+		$row  = $repo->get_task( (int) $job['current_id'] );
+		if ( $row ) {
+			$hist = wpcable_task_history_for_display( $row );
+			$out['current_comments_saved'] = isset( $hist['comments']['saved_count'] ) ? (int) $hist['comments']['saved_count'] : 0;
+			$out['current_comments_total'] = isset( $hist['comments']['total'] ) ? $hist['comments']['total'] : null;
+			$out['current_records_per_page'] = isset( $hist['comments']['records_per_page'] ) ? $hist['comments']['records_per_page'] : null;
+			$out['current_page_count'] = isset( $hist['comments']['page_count'] ) ? $hist['comments']['page_count'] : null;
+		}
+	}
+	return $out;
 }
 
 /**
@@ -812,7 +828,7 @@ function wpcable_history_backfill_task_query_sig( $repo, $task_id ) {
 	}
 	$path  = isset( $meta['comments']['next_replay']['path'] ) ? $meta['comments']['next_replay']['path'] : '';
 	$query = isset( $meta['comments']['next_replay']['query'] ) && is_array( $meta['comments']['next_replay']['query'] )
-		? $meta['comments']['next_replay']['query']
+		? wpcable_comments_follow_query( $meta['comments']['next_replay']['query'] )
 		: array();
 	return wpcable_comments_query_sig( $path, $query );
 }
@@ -880,13 +896,16 @@ function wpcable_history_backfill_settings_card() {
 			<?php echo esc_html( $public['cron'] ); ?>
 		</p>
 		<p class="description">
-			<?php esc_html_e( 'Do not start backfill until one project shows Load more or a verified next comments Link. Author names stay unknown unless a nested user is on the payload or the user_id matches the connected account / a saved client. Visibility uses is_private; is_contractors_only stays a separate flag.', 'wpcable' ); ?>
+			<?php esc_html_e( 'Do not start backfill until one project Load more follows the verified root-relative next Link and reaches X-Total-Count (163186: 674). Author names stay unknown unless a nested user is on the payload or the user_id matches the connected account / a saved client. Visibility uses is_private; is_contractors_only stays a separate flag.', 'wpcable' ); ?>
 		</p>
 		<ul class="wpcable-backfill-stats">
 			<li><?php echo esc_html( sprintf( __( 'State: %s', 'wpcable' ), $public['state'] ) ); ?></li>
 			<li><?php echo esc_html( sprintf( __( 'Snapshot: %1$d imported · queued %2$d · complete %3$d · denied 403 %4$d · partial %5$d · errors %6$d · already complete %7$d', 'wpcable' ), (int) $public['snapshot_count'], (int) $public['queued_count'], (int) $public['done_count'], (int) $public['denied_count'], (int) $public['partial_count'], (int) $public['error_count'], (int) $public['skipped_complete_count'] ) ); ?></li>
 			<?php if ( $public['current_id'] ) : ?>
 				<li><?php echo esc_html( sprintf( __( 'Current project %1$d (%2$s, page %3$d)', 'wpcable' ), (int) $public['current_id'], $public['current_mode'], (int) $public['current_pages'] ) ); ?></li>
+				<?php if ( ! empty( $public['current_comments_total'] ) ) : ?>
+					<li><?php echo esc_html( sprintf( __( 'Current comments %1$d of %2$d (%3$s/page)', 'wpcable' ), (int) $public['current_comments_saved'], (int) $public['current_comments_total'], $public['current_records_per_page'] ? (string) (int) $public['current_records_per_page'] : '—' ) ); ?></li>
+				<?php endif; ?>
 			<?php endif; ?>
 			<li><?php echo esc_html( sprintf( __( 'Requests this job: %d', 'wpcable' ), (int) $public['requests_total'] ) ); ?></li>
 			<?php if ( $public['wait_until'] > time() ) : ?>

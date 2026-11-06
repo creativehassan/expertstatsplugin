@@ -61,6 +61,9 @@ require __DIR__ . '/test-qa-047.php';
 echo "\n7i) 0.4.8 QA: is_private mapping and rejected-Link diagnostics\n";
 require __DIR__ . '/test-qa-048.php';
 
+echo "\n7j) 0.4.9 QA: root-relative next Link, 14 pages / 674 complete\n";
+require __DIR__ . '/test-qa-049.php';
+
 echo "\n8) Production JS integration (jsdom + jQuery, no Codeable network)\n";
 $js_dir    = __DIR__ . '/js';
 $js_status = 0;

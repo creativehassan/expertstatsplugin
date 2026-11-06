@@ -10,7 +10,7 @@
 global $wpcable_filters, $wpcable_http_calls, $wpcable_http_queue, $wpcable_cron_events, $wpcable_spawn_cron;
 
 $php = file_get_contents( WPCABLE_TEST_ROOT . '/wp-codeable.php' );
-wpcable_assert( false !== strpos( $php, 'Version:           0.4.8' ), 'plugin header is 0.4.8' );
+wpcable_assert( false !== strpos( $php, 'Version:           0.4.9' ), 'plugin header is 0.4.9' );
 wpcable_assert( false !== strpos( $php, "add_action( 'wpcable_history_backfill_tick'" ), 'WP-Cron single-event hook is registered' );
 wpcable_assert( false !== strpos( file_get_contents( WPCABLE_TEST_ROOT . '/wp-codeable.php' ), 'wpcable_history_backfill_tick' ), 'hourly cron continues a running backfill' );
 

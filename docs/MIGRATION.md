@@ -1,6 +1,14 @@
-# Migration and rollback — Expert Stats 0.4.8
+# Migration and rollback — Expert Stats 0.4.9
 
-This release stays inside the existing plugin directory and main file (`wp-codeable.php`). It is a patch of 0.4.7. Schema stays **0.0.6**. Overlay onto `expertstatsplugin-master/`. Do not start bulk until one project shows **Load more** or a verified next Link.
+This release stays inside the existing plugin directory and main file (`wp-codeable.php`). It is a patch of 0.4.8. Schema stays **0.0.6**. Overlay onto `expertstatsplugin-master/`. After 163186 Load more reaches 674, bulk may be started.
+
+## 0.4.9 behavior
+
+- Resolves documented **root-relative** `Link rel=next` (`/tasks/{id}/comments?page=N`) onto existing `api.codeable.io`. Token stays same-host.
+- Rejects `//host`, userinfo, fragments, traversal/encoding, mismatched ids, and non-documented paths. Does not guess `/users/me/tasks`.
+- First GET remains `limit`/`offset`; page-based next sends only integer `page`.
+- Overlay `expertstatsplugin-0.4.9-hybrid.zip`. Hard-refresh (`0.4.9`). On **163186**, Load from Codeable, then Load more until `674 of 674`. Then start bulk if desired.
+- Rollback: overlay 0.4.8. Cached rows remain.
 
 ## 0.4.8 behavior
 
@@ -20,7 +28,8 @@ This release stays inside the existing plugin directory and main file (`wp-codea
 2. **0.4.5** — Opt-in documented `GET /tasks/{id}` + `GET /tasks/{id}/comments`.
 3. **0.4.6** — Live mapping/paging fix: 50-item pages, Link replay onto `api.codeable.io`, keys-only shape, PKT DateTime, Load more. Two WP ZIP uploads of 0.4.6 failed Cloudflare 520 (archive too heavy); live site stayed on 0.4.5.
 4. **0.4.7** — Resumable bulk comments backfill + lean production ZIP. Live overlay succeeded.
-5. **0.4.8** — `is_private` mapping, local `user_id` author, sanitized rejected-Link diagnostics (this ZIP). Bulk still unstarted.
+5. **0.4.8** — `is_private` mapping, local `user_id` author, sanitized rejected-Link diagnostics. Captured live root-relative next + 674/14.
+6. **0.4.9** — Resolve that root-relative next onto `api.codeable.io` (this ZIP). Bulk still idle until started.
 
 ## What changes in the database
 

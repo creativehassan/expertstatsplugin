@@ -16,7 +16,8 @@ $loader = file_get_contents( WPCABLE_TEST_ROOT . '/functions/task-detail.php' );
 wpcable_assert( false !== strpos( $loader, "tasks/' . \$task_id" ) || false !== strpos( $loader, 'tasks/\' . $task_id' ) || false !== strpos( $loader, "tasks/' . (int) \$task_id" ), 'loader uses plural tasks path' );
 wpcable_assert( false !== strpos( $loader, "'limit'" ), 'comments use documented limit param' );
 wpcable_assert( false !== strpos( $loader, "'offset'" ), 'comments use documented offset param' );
-wpcable_assert( false === strpos( $loader, "'page' =>" ), 'first comments request does not hardcode a page= probe' );
+wpcable_assert( false !== strpos( $loader, "array( 'limit' => 20, 'offset' => 0 )" ), 'first comments GET is documented limit/offset' );
+wpcable_assert( false === strpos( $loader, "'page' => 1" ), 'first comments request does not hardcode a page=1 probe' );
 wpcable_assert( false === strpos( $loader, 'attachments' ), 'attachments endpoint not in this phase' );
 wpcable_assert( false === strpos( $loader, '/reviews' ), 'reviews endpoint not in this phase' );
 
@@ -29,7 +30,7 @@ wpcable_assert( false !== strpos( $js, 'wpcable-load-history' ), 'drawer has Loa
 wpcable_assert( false !== strpos( $js, 'wpcable_load_task_history' ), 'drawer posts the local WP ajax action' );
 
 $php = file_get_contents( WPCABLE_TEST_ROOT . '/wp-codeable.php' );
-wpcable_assert( false !== strpos( $php, 'Version:           0.4.8' ), 'plugin header is 0.4.8' );
+wpcable_assert( false !== strpos( $php, 'Version:           0.4.9' ), 'plugin header is 0.4.9' );
 wpcable_assert( false !== strpos( $php, '0.0.6' ), 'schema 0.0.6 additive' );
 wpcable_assert( false !== strpos( $php, 'history_meta_json' ), 'history_meta_json column additive' );
 
