@@ -1,6 +1,6 @@
 <?php
 /**
- * Opportunities: grounded suggestions only.
+ * Opportunities: grounded suggestions only, ranked for comparison.
  *
  * @package wpcable
  *
@@ -13,15 +13,33 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-?>
-<div class="wrap wpcable_wrap wpcable-workspace wpcable-workspace--opportunities" data-workspace="opportunities">
-	<h1><?php esc_html_e( 'Suggested opportunities', 'wpcable' ); ?></h1>
-	<p class="wpcable-lede">
-		<?php esc_html_e( 'These are grounded suggestions from imported records — not confirmed client needs. Each card lists the source rows, a confidence label, and why the cue fired. Nothing is auto-sent.', 'wpcable' ); ?>
-	</p>
 
+$groups = array();
+foreach ( $cues as $cue ) {
+	$type = isset( $cue['type'] ) ? (string) $cue['type'] : 'other';
+	if ( ! isset( $groups[ $type ] ) ) {
+		$groups[ $type ] = array(
+			'title' => isset( $cue['title'] ) ? $cue['title'] : $type,
+			'items' => array(),
+			'score' => 0,
+		);
+	}
+	$groups[ $type ]['items'][] = $cue;
+	$score = isset( $cue['score'] ) ? (int) $cue['score'] : 0;
+	if ( $score > $groups[ $type ]['score'] ) {
+		$groups[ $type ]['score'] = $score;
+	}
+}
+
+uasort(
+	$groups,
+	function ( $a, $b ) {
+		return $b['score'] - $a['score'];
+	}
+);
+?>
 	<div class="wpcable-callout wpcable-callout--info">
-		<?php esc_html_e( 'Shown only when evidence exists from imported fields. Chat, files, websites, per-task reviews, and global hiring are not in this plugin.', 'wpcable' ); ?>
+		<?php esc_html_e( 'These are timing and volume cues from imported records, not confirmed requests. Ranked by local score so you can scan; identical titles are grouped. Chat, files, websites, per-project reviews, and global hiring stay unverified unless those fields were on the saved payload.', 'wpcable' ); ?>
 	</div>
 
 	<?php if ( empty( $cues ) ) : ?>
@@ -30,44 +48,80 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<p class="description"><?php esc_html_e( 'Cues appear for completed + stale activity, repeat completed work, preferred + completed, or multi-project clients. Empty is honest.', 'wpcable' ); ?></p>
 		</div>
 	<?php else : ?>
-		<div class="wpcable-opp-grid">
-			<?php foreach ( $cues as $cue ) : ?>
-				<article class="wpcable-opp-card wpcable-opp-card--<?php echo esc_attr( $cue['confidence'] ); ?>">
-					<header>
-						<span class="wpcable-badge"><?php echo esc_html( strtoupper( $cue['confidence'] ) ); ?></span>
-						<h2><?php echo esc_html( $cue['title'] ); ?></h2>
-					</header>
-					<p>
-						<strong><?php echo esc_html( $cue['client_name'] ); ?></strong>
-						<span class="description"> · <?php echo esc_html( sprintf( __( 'client_id %d', 'wpcable' ), (int) $cue['client_id'] ) ); ?></span>
-					</p>
-					<ul>
-						<?php foreach ( $cue['reasons'] as $reason ) : ?>
-							<li><?php echo esc_html( $reason ); ?></li>
-						<?php endforeach; ?>
-					</ul>
+		<?php foreach ( $groups as $group ) : ?>
+			<section class="wpcable-opp-group wpcable-table-card">
+				<header>
+					<h2><?php echo esc_html( $group['title'] ); ?></h2>
 					<p class="description">
-						<?php echo esc_html( $cue['disclaimer'] ); ?>
 						<?php
-						if ( ! empty( $cue['evidence']['source_task_ids'] ) ) {
-							echo ' · ' . esc_html(
-								sprintf(
-									/* translators: %s: comma-separated task ids */
-									__( 'Source projects: %s', 'wpcable' ),
-									implode( ', ', array_map( 'strval', $cue['evidence']['source_task_ids'] ) )
-								)
-							);
-						}
+						echo esc_html(
+							sprintf(
+								/* translators: %d: cue count in this group */
+								_n( '%d client in this cue type', '%d clients in this cue type', count( $group['items'] ), 'wpcable' ),
+								count( $group['items'] )
+							)
+						);
 						?>
+						— <?php esc_html_e( 'not a confirmed need', 'wpcable' ); ?>
 					</p>
-					<p>
-						<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=codeable_clients&client_id=' . (int) $cue['client_id'] ) ); ?>">
-							<?php esc_html_e( 'Open client', 'wpcable' ); ?>
-						</a>
-					</p>
-				</article>
-			<?php endforeach; ?>
-		</div>
+				</header>
+				<table class="wpcable-opp-table">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Rank', 'wpcable' ); ?></th>
+							<th><?php esc_html_e( 'Client', 'wpcable' ); ?></th>
+							<th><?php esc_html_e( 'Confidence', 'wpcable' ); ?></th>
+							<th><?php esc_html_e( 'Why this fired', 'wpcable' ); ?></th>
+							<th><?php esc_html_e( 'Action', 'wpcable' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $group['items'] as $index => $cue ) : ?>
+							<tr class="wpcable-opp-card--<?php echo esc_attr( $cue['confidence'] ); ?>">
+								<td><?php echo esc_html( (string) ( $index + 1 ) ); ?></td>
+								<td>
+									<strong><?php echo esc_html( $cue['client_name'] ); ?></strong>
+									<div class="description"><?php echo esc_html( sprintf( __( 'Client %d', 'wpcable' ), (int) $cue['client_id'] ) ); ?></div>
+								</td>
+								<td><span class="wpcable-badge"><?php echo esc_html( strtoupper( $cue['confidence'] ) ); ?></span></td>
+								<td>
+									<?php echo esc_html( isset( $cue['reasons'][0] ) ? $cue['reasons'][0] : '' ); ?>
+									<?php if ( count( $cue['reasons'] ) > 1 ) : ?>
+										<details>
+											<summary><?php esc_html_e( 'More evidence', 'wpcable' ); ?></summary>
+											<ul class="wpcable-opp-reasons">
+												<?php foreach ( array_slice( $cue['reasons'], 1 ) as $reason ) : ?>
+													<li><?php echo esc_html( $reason ); ?></li>
+												<?php endforeach; ?>
+											</ul>
+										</details>
+									<?php endif; ?>
+									<p class="description">
+										<?php echo esc_html( $cue['disclaimer'] ); ?>
+										<?php
+										if ( ! empty( $cue['evidence']['source_task_ids'] ) ) {
+											echo ' · ' . esc_html(
+												sprintf(
+													/* translators: %s: comma-separated task ids */
+													__( 'Source projects: %s', 'wpcable' ),
+													implode( ', ', array_map( 'strval', $cue['evidence']['source_task_ids'] ) )
+												)
+											);
+										}
+										?>
+									</p>
+								</td>
+								<td>
+									<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=codeable_clients&client_id=' . (int) $cue['client_id'] ) ); ?>">
+										<?php esc_html_e( 'Open client', 'wpcable' ); ?>
+									</a>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</section>
+		<?php endforeach; ?>
 	<?php endif; ?>
 
 	<section class="wpcable-unsupported">
@@ -81,6 +135,3 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<?php endforeach; ?>
 		</ul>
 	</section>
-
-	<?php codeable_last_fetch_info(); ?>
-</div>

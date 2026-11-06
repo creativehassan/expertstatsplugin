@@ -86,7 +86,7 @@ wpcable_assert_equals( 'https://app.codeable.io/tasks/3031/workroom', $sentinel_
 wpcable_assert( empty( $sentinel_task['history']['description']['available'] ), 'description marked unavailable' );
 wpcable_assert( empty( $sentinel_task['history']['comments']['available'] ), 'comments marked unavailable' );
 wpcable_assert( false === $sentinel_task['history']['complete'], 'history is not claimed complete' );
-wpcable_assert( false !== strpos( $sentinel_task['history']['comments']['reason'], 'not an empty comment' ), 'comments panel is not an empty list' );
+wpcable_assert( false !== strpos( $sentinel_task['history']['comments']['reason'], 'not an empty thread' ), 'comments panel is not an empty list' );
 
 $clients = new wpcable_clients();
 $sentinel_client = $clients->get_client_detail( 303 );

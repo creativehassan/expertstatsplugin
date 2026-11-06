@@ -414,9 +414,27 @@ class wpcable_clients {
 			__( 'Profile conversion percentages from users/me, which are a different scope than local imported rows', 'wpcable' ),
 		);
 
+		$desc_present = false;
+		$comments_present = false;
+		foreach ( $tasks as $task ) {
+			if ( ! empty( $task['description_present'] ) ) {
+				$desc_present = true;
+			}
+			if ( ! empty( $task['comments_present'] ) ) {
+				$comments_present = true;
+			}
+		}
+
+		if ( $desc_present ) {
+			$available[] = __( 'Project description stored from the saved task payload', 'wpcable' );
+		}
+		if ( $comments_present ) {
+			$available[] = __( 'Workroom comments stored from the saved task payload (visibility flags when present; pagination unverified)', 'wpcable' );
+		}
+
 		$unverified = array(
-			__( 'Workroom chat threads', 'wpcable' ),
-			__( 'Full task description body', 'wpcable' ),
+			$comments_present ? __( 'Full public/private comment pagination', 'wpcable' ) : __( 'Workroom chat threads (not in the saved list payload for these rows)', 'wpcable' ),
+			$desc_present ? __( 'Whether the list payload is a complete project body', 'wpcable' ) : __( 'Project description (not in the saved list payload for these rows — unverified, not proof the API omits it)', 'wpcable' ),
 			__( 'Attached files', 'wpcable' ),
 			__( 'Per-task star ratings', 'wpcable' ),
 			__( 'Client website URL', 'wpcable' ),

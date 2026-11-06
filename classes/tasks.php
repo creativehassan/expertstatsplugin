@@ -463,6 +463,86 @@ class wpcable_tasks {
 	}
 
 	/**
+	 * Distinct client_id values on imported tasks.
+	 *
+	 * @return int
+	 */
+	public function count_distinct_clients() {
+		global $wpdb;
+
+		return (int) $wpdb->get_var(
+			"SELECT COUNT(DISTINCT client_id) FROM `{$this->tables['tasks']}` WHERE client_id > 0"
+		);
+	}
+
+	/**
+	 * Valid last_activity grouped by calendar month (UTC), newest first.
+	 *
+	 * @param int $limit Month buckets.
+	 * @return array
+	 */
+	public function get_activity_buckets( $limit = 12 ) {
+		global $wpdb;
+
+		$limit = max( 1, (int) $limit );
+		$rows  = $wpdb->get_results(
+			"SELECT last_activity FROM `{$this->tables['tasks']}` WHERE last_activity > 0",
+			ARRAY_A
+		);
+		if ( ! is_array( $rows ) ) {
+			return array();
+		}
+
+		$buckets = array();
+		foreach ( $rows as $row ) {
+			$ts = wpcable_normalize_timestamp( isset( $row['last_activity'] ) ? $row['last_activity'] : 0 );
+			if ( $ts <= 0 ) {
+				continue;
+			}
+			$key = gmdate( 'Y-m', $ts );
+			if ( ! isset( $buckets[ $key ] ) ) {
+				$buckets[ $key ] = array(
+					'month' => $key,
+					'label' => gmdate( 'M Y', $ts ),
+					'count' => 0,
+				);
+			}
+			$buckets[ $key ]['count']++;
+		}
+
+		krsort( $buckets );
+		return array_slice( array_values( $buckets ), 0, $limit );
+	}
+
+	/**
+	 * Imported rows grouped by Codeable state column.
+	 *
+	 * @return array
+	 */
+	public function get_state_distribution() {
+		global $wpdb;
+
+		$rows = $wpdb->get_results(
+			"SELECT state, COUNT(*) AS total FROM `{$this->tables['tasks']}` GROUP BY state ORDER BY total DESC",
+			ARRAY_A
+		);
+		if ( ! is_array( $rows ) ) {
+			return array();
+		}
+
+		$out = array();
+		foreach ( $rows as $row ) {
+			$state = isset( $row['state'] ) && '' !== $row['state'] ? $row['state'] : __( '(blank)', 'wpcable' );
+			$out[] = array(
+				'state' => $state,
+				'count' => (int) $row['total'],
+			);
+		}
+
+		return $out;
+	}
+
+	/**
 	 * Takes a single DB row as input and sanitizes some values.
 	 *
 	 * @param  array $task Raw DB value.
@@ -502,7 +582,16 @@ class wpcable_tasks {
 		$task['has_notes']     = '' !== trim( $task['notes'] );
 		$task['value_known']   = ( $task['value'] > 0 || $task['value_client'] > 0 );
 		$task['workroom_url']  = wpcable_workroom_url( $task['task_id'] );
-		$task['history']       = wpcable_task_history_unavailable( $task );
+		$task['description_present'] = ! empty( $task['description_present'] );
+		$task['description_text']    = array_key_exists( 'description_text', $task ) && null !== $task['description_text']
+			? (string) $task['description_text']
+			: '';
+		$task['description_key']     = isset( $task['description_key'] ) ? (string) $task['description_key'] : '';
+		$task['comments_present']    = ! empty( $task['comments_present'] );
+		$task['comments_complete']   = ! empty( $task['comments_complete'] );
+		$task['comments_source']     = isset( $task['comments_source'] ) ? (string) $task['comments_source'] : '';
+		$task['comments_json']       = isset( $task['comments_json'] ) ? (string) $task['comments_json'] : '';
+		$task['history']             = wpcable_task_history( $task );
 
 		$task['last_activity_date'] = '';
 		$task['last_activity_time'] = '';

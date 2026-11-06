@@ -61,6 +61,56 @@ function esc_attr__( $text, $domain = 'default' ) {
 	return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
 }
 
+function esc_attr_e( $text, $domain = 'default' ) {
+	echo esc_attr__( $text, $domain );
+}
+
+function _n( $single, $plural, $number, $domain = 'default' ) {
+	return 1 === (int) $number ? $single : $plural;
+}
+
+function selected( $selected, $current = true, $echo = true ) {
+	$result = ( (string) $selected === (string) $current ) ? ' selected="selected"' : '';
+	if ( $echo ) {
+		echo $result;
+	}
+	return $result;
+}
+
+function settings_fields( $group ) {
+	unset( $group );
+}
+
+function do_settings_sections( $group ) {
+	unset( $group );
+}
+
+function submit_button( $text = 'Save Changes' ) {
+	echo '<p class="submit"><input type="submit" class="button-primary" value="' . esc_attr( $text ) . '" /></p>';
+}
+
+function remove_query_arg( $keys, $url = null ) {
+	unset( $keys, $url );
+	return 'https://example.test/wp-admin/admin.php?page=codeable_settings';
+}
+
+function add_query_arg( $key, $value = null, $url = null ) {
+	if ( is_array( $key ) ) {
+		$url = $value ? $value : '';
+		foreach ( $key as $k => $v ) {
+			$url = add_query_arg( $k, $v, $url );
+		}
+		return $url;
+	}
+	$base = $url ? $url : 'https://example.test/wp-admin/admin.php?page=codeable_settings';
+	$sep  = false !== strpos( $base, '?' ) ? '&' : '?';
+	return $base . $sep . rawurlencode( (string) $key ) . '=' . rawurlencode( (string) $value );
+}
+
+function wp_nonce_url( $url, $action = -1 ) {
+	return add_query_arg( '_wpnonce', 'test-nonce', $url ) . '&action=' . rawurlencode( (string) $action );
+}
+
 function esc_html( $text ) {
 	return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' );
 }
@@ -203,7 +253,14 @@ class wpcable_test_wpdb {
 				last_activity_by TEXT DEFAULT "",
 				last_sync INTEGER DEFAULT 0,
 				flag TEXT DEFAULT "",
-				notes TEXT DEFAULT ""
+				notes TEXT DEFAULT "",
+				description_text TEXT,
+				description_present INTEGER DEFAULT 0,
+				description_key TEXT DEFAULT "",
+				comments_json TEXT,
+				comments_present INTEGER DEFAULT 0,
+				comments_complete INTEGER DEFAULT 0,
+				comments_source TEXT DEFAULT ""
 			)'
 		);
 		$this->pdo->exec(
@@ -382,8 +439,17 @@ function wpcable_assert_equals( $expected, $actual, $message ) {
 }
 
 function wpcable_load_plugin_classes() {
+	if ( ! defined( 'WPCABLE_TEMPLATE_DIR' ) ) {
+		define( 'WPCABLE_TEMPLATE_DIR', WPCABLE_TEST_ROOT . '/templates' );
+		define( 'WPCABLE_CLASSES_DIR', WPCABLE_TEST_ROOT . '/classes' );
+		define( 'WPCABLE_FUNCTIONS_DIR', WPCABLE_TEST_ROOT . '/functions' );
+		define( 'WPCABLE_ASSESTS_DIR', WPCABLE_TEST_ROOT . '/assets' );
+		define( 'WPCABLE_DIR', WPCABLE_TEST_ROOT );
+	}
 	require_once WPCABLE_TEST_ROOT . '/classes/object_cache.php';
 	require_once WPCABLE_TEST_ROOT . '/functions/helpers.php';
+	require_once WPCABLE_TEST_ROOT . '/functions/task-payload.php';
+	require_once WPCABLE_TEST_ROOT . '/functions/admin-chrome.php';
 	require_once WPCABLE_TEST_ROOT . '/classes/import_health.php';
 	require_once WPCABLE_TEST_ROOT . '/classes/estimate.php';
 	require_once WPCABLE_TEST_ROOT . '/classes/stats.php';

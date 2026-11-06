@@ -515,6 +515,10 @@ class wpcable_api_data {
 					$new_task['last_activity_by'] = $task['last_event']['user']['full_name'];
 				}
 
+				// Persist description/comments only when those keys are already
+				// on this permitted list payload. Does not call GET /task/{id}.
+				$new_task = wpcable_apply_payload_history( $new_task, $task );
+
 				if ( ! empty( $task['last_event']['type']) && 'create_vault' === $task['last_event']['type']) {
 					$new_task['last_activity'] = (int) strtotime($task['last_event']['user']['last_sign_in_at']);
 					$new_task['last_activity_by'] = $task['last_event']['user']['full_name'];

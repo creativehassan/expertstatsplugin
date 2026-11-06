@@ -155,7 +155,7 @@ class wpcable_opportunities {
 				array(
 					sprintf(
 						/* translators: %d: completed count */
-						__( 'This client_id has %d locally completed project(s).', 'wpcable' ),
+						__( 'This client has %d locally completed project(s).', 'wpcable' ),
 						$completed
 					),
 					$preferred
@@ -200,7 +200,7 @@ class wpcable_opportunities {
 				array(
 					sprintf(
 						/* translators: %d: project count */
-						__( '%d imported projects share this client_id.', 'wpcable' ),
+						__( '%d imported projects share this client.', 'wpcable' ),
 						$total
 					),
 					__( 'Volume is not a confirmed request for extra help. Full task descriptions are not imported.', 'wpcable' ),
@@ -252,7 +252,7 @@ class wpcable_opportunities {
 			array(
 				'id'      => 'conversation_mining',
 				'title'   => __( 'Conversation mining', 'wpcable' ),
-				'reason'  => __( 'Workroom chat, files, and full task body are not imported.', 'wpcable' ),
+				'reason'  => __( 'Workroom comments and the project body are stored only when those keys are already on the saved task-list payload. Dedicated comment pagination is unverified; this plugin does not call a separate comments route.', 'wpcable' ),
 			),
 			array(
 				'id'      => 'per_task_reviews',
@@ -450,5 +450,39 @@ class wpcable_opportunities {
 		}
 
 		return $hits;
+	}
+
+	/**
+	 * Persist a non-secret derived snapshot of the current cues.
+	 * Survives disconnect so Opportunities can still list last computed cards.
+	 *
+	 * @param array $cues Suggestion list.
+	 * @return void
+	 */
+	public function persist_snapshot( $cues ) {
+		$items = array();
+		if ( is_array( $cues ) ) {
+			foreach ( $cues as $cue ) {
+				if ( ! is_array( $cue ) ) {
+					continue;
+				}
+				$items[] = array(
+					'type'       => isset( $cue['type'] ) ? (string) $cue['type'] : '',
+					'title'      => isset( $cue['title'] ) ? (string) $cue['title'] : '',
+					'confidence' => isset( $cue['confidence'] ) ? (string) $cue['confidence'] : '',
+					'client_id'  => isset( $cue['client_id'] ) ? (int) $cue['client_id'] : 0,
+					'score'      => isset( $cue['score'] ) ? (int) $cue['score'] : 0,
+				);
+			}
+		}
+
+		update_option(
+			'wpcable_opportunity_snapshot',
+			array(
+				'computed_at' => time(),
+				'count'       => count( $items ),
+				'items'       => $items,
+			)
+		);
 	}
 }

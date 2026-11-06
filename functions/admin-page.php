@@ -132,10 +132,15 @@ function codeable_transcactions_stats_cb() {
 	$wpcable_clients = new wpcable_clients();
 	$clients_data    = $wpcable_clients->get_clients();
 
+	wpcable_app_open(
+		'stats',
+		__( 'Overview', 'wpcable' ),
+		__( 'Local WordPress records. Expert-profile totals and imported project rows are different scopes. Missing money imports stay unavailable, not $0.', 'wpcable' )
+	);
+	wpcable_overview_panel();
 	?>
 
-	<div class="wrap cable_stats_wrap">
-		<h1><?php echo __( 'Codeable Stats', 'wpcable' ); ?></h1>
+	<div class="cable_stats_wrap">
 
 		<div class="clearfix spacer"></div>
 
@@ -160,7 +165,7 @@ function codeable_transcactions_stats_cb() {
 					<span class="name"><?php echo esc_html( wpcable_account_detail( $account_details, 'first_name' ) . ' ' . wpcable_account_detail( $account_details, 'last_name' ) ); ?></span>
 					<span class="label role"><?php echo esc_html( wpcable_account_detail( $account_details, 'role' ) ); ?></span>
 					<span class="user-id"><?php echo esc_html__( 'ID', 'wpcable' ) . ': <a href="https://app.codeable.io/tasks/new?preferredContractor=' . esc_attr( wpcable_account_detail( $account_details, 'id' ) ) . '" target="_blank" title="' . esc_attr__( 'Direct hire link', 'wpcable' ) . '">' . esc_html( wpcable_account_detail( $account_details, 'id' ) ); ?></a></span>
-					<span class="wpcable-source-chip"><?php esc_html_e( 'Source: users/me profile', 'wpcable' ); ?></span>
+					<span class="wpcable-source-chip"><?php esc_html_e( 'Source: saved expert profile', 'wpcable' ); ?></span>
 				</div>
 			</div>
 
@@ -171,7 +176,7 @@ function codeable_transcactions_stats_cb() {
 						<div class="value"><?php echo esc_html( wpcable_account_detail( $account_details, 'completed_tasks_count', '—' ) ); ?></div>
 					</div>
 					<div class="footerdata">
-						<span class="label"><?php echo esc_html__( 'Profile tasks_count', 'wpcable' ); ?></span>:
+						<span class="label"><?php echo esc_html__( 'Profile projects', 'wpcable' ); ?></span>:
 						<span class="value">
 							<?php echo esc_html( wpcable_account_detail( $account_details, 'tasks_count', '—' ) ); ?>
 						</span><br/>
@@ -1181,6 +1186,7 @@ function codeable_transcactions_stats_cb() {
 	</script>
 	<?php endif; ?>
 
-
+	</div>
 	<?php
+	wpcable_app_close();
 }

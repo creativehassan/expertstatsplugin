@@ -153,7 +153,7 @@ jQuery(document).ready(function () {
             if ( jQuery( '.wrap.wpcable-workspace' ).length || jQuery( '.wrap.wpcable_wrap.tasks' ).length ) {
                 // On workspace pages silently refresh lists without a full reload.
                 jQuery( document ).trigger( 'codeable-reload-tasks' );
-            } else if ( jQuery( '.wrap.cable_stats_wrap' ).length ) {
+            } else if ( jQuery( '.wrap.cable_stats_wrap' ).length || jQuery( '.wpcable-workspace--stats' ).length ) {
                 // On stats-page we can reload the whole window without a problem.
                 window.location.reload();
             }
@@ -168,7 +168,7 @@ jQuery(document).ready(function () {
             state = res.data.state
         }
 
-        if ( state === 'FORBIDDEN' ) {
+        if ( state === 'FORBIDDEN' || state === 'DISCONNECTED' ) {
             hideProgressBar();
             return;
         }
@@ -182,6 +182,10 @@ jQuery(document).ready(function () {
     }
 
     function startSync( ev ) {
+        if ( elProgress.attr( 'data-sync-allowed' ) === '0' || jQuery( '.wpcable-app' ).attr( 'data-connected' ) === '0' ) {
+            ev.preventDefault();
+            return false;
+        }
         jQuery.post(
             window.ajaxurl,
             {

@@ -164,8 +164,14 @@ function codeable_tasks_callback() {
 		! empty( $account['id'] )
 	);
 
+	wpcable_app_open(
+		'tasks',
+		__( 'Projects', 'wpcable' ),
+		__( 'Imported Codeable projects, paginated on the server. Expert-profile totals are a different scope than these local rows. Access stays read-only; only your local notes and flags are saved here.', 'wpcable' )
+	);
 	$admin_task_table_template = apply_filters( 'wpcable_admin_task_table_template', WPCABLE_TEMPLATE_DIR . '/admin-task-table.php' );
 	ob_start();
 	require $admin_task_table_template;
 	echo ob_get_clean();
+	wpcable_app_close();
 }

@@ -49,10 +49,18 @@ function codeable_opportunities_callback() {
 		! empty( $account['id'] )
 	);
 
+	$opps->persist_snapshot( $cues );
+
+	wpcable_app_open(
+		'opportunities',
+		__( 'Opportunities', 'wpcable' ),
+		__( 'Grounded suggestions from imported records — not confirmed client needs. Ranked for comparison. Nothing is auto-sent.', 'wpcable' )
+	);
 	$template = apply_filters( 'wpcable_admin_opportunities_template', WPCABLE_TEMPLATE_DIR . '/admin-opportunities.php' );
 	ob_start();
 	require $template;
 	echo ob_get_clean();
+	wpcable_app_close();
 }
 
 /**

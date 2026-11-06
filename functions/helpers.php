@@ -439,29 +439,9 @@ function wpcable_account_stat( $account_details, $key, $default = 0 ) {
  * @return void
  */
 function codeable_page_requires_login( $page_title ) {
-	if ( codeable_api_logged_in() ) {
-		return;
-	}
-
-	?>
-	<div class="wrap">
-		<h1><?php echo esc_html( $page_title ); ?></h1>
-
-		<div class="notice error">
-			<p>
-				<?php
-				printf(
-					/* translators: 1: opening anchor, 2: closing anchor */
-					esc_html__( 'Please %1$slog in%2$s to access your stats.', 'wpcable' ),
-					'<a href="' . esc_url( admin_url( 'admin.php?page=codeable_settings' ) ) . '">',
-					'</a>'
-				);
-				?>
-			</p>
-		</div>
-	</div>
-	<?php
-	exit;
+	unset( $page_title );
+	// 0.4.3: do not block screens. Saved profile/projects/notes remain visible
+	// when the auth token is absent. Sync is gated separately.
 }
 
 /**
@@ -529,6 +509,7 @@ function codeable_flush_all_data() {
 	delete_option( 'wpcable_last_fetch' );
 	delete_option( 'wpcable_account_details' );
 	delete_option( 'wpcable_import_health' );
+	delete_option( 'wpcable_opportunity_snapshot' );
 
 	codeable_api_logout();
 
@@ -707,12 +688,19 @@ function codeable_last_fetch_info() {
 				<i class="dashicons dashicons-info"></i>
 			</span>
 			|
-			<a href="#refresh" class="sync-start">
-				<?php esc_html_e( 'Refresh', 'wpcable' ); ?>
-			</a>
+			<?php if ( wpcable_sync_allowed() ) : ?>
+				<a href="#refresh" class="sync-start">
+					<?php esc_html_e( 'Refresh', 'wpcable' ); ?>
+				</a>
+			<?php else : ?>
+				<span class="wpcable-sync-disabled"><?php esc_html_e( 'Refresh is off while disconnected. Saved data stays visible.', 'wpcable' ); ?></span>
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=codeable_settings' ) ); ?>">
+					<?php esc_html_e( 'Connect in Settings', 'wpcable' ); ?>
+				</a>
+			<?php endif; ?>
 		</p>
 	</div>
-	<div class="codeable-sync-progress" style="<?php echo $running ? '' : 'display:none'; ?>" data-nonce="<?php echo esc_attr( $nonce ); ?>" data-resume-pending="1">
+	<div class="codeable-sync-progress" style="<?php echo $running ? '' : 'display:none'; ?>" data-nonce="<?php echo esc_attr( $nonce ); ?>" data-resume-pending="1" data-sync-allowed="<?php echo wpcable_sync_allowed() ? '1' : '0'; ?>">
 		<span class="spinner is-active"></span>
 		<span class="msg">
 			<?php
@@ -853,33 +841,12 @@ function wpcable_workroom_url( $task_id ) {
 }
 
 /**
- * Honest project-history payload. Description and comments are not stored
- * locally and have no official public API contract in this plugin.
- *
+/**
  * @param array $task Sanitized task.
  * @return array
  */
 function wpcable_task_history_unavailable( $task = array() ) {
-	$task_id = isset( $task['task_id'] ) ? (int) $task['task_id'] : 0;
-
-	return array(
-		'description' => array(
-			'available' => false,
-			'label'     => __( 'Project description', 'wpcable' ),
-			'reason'    => __( 'Unavailable in this plugin. Local codeable_tasks stores title, state, flags, prices, last_activity, and local notes — not the full project body. No official public Codeable API contract for description was found, so this plugin does not import or invent one.', 'wpcable' ),
-		),
-		'comments'    => array(
-			'available' => false,
-			'label'     => __( 'Workroom comments', 'wpcable' ),
-			'reason'    => __( 'Not imported — this is not an empty comment history. There is no comments column and no documented comments endpoint used by this plugin. Local notes are WordPress-only and are not Codeable comments. Open the workroom in Codeable to read the live thread.', 'wpcable' ),
-		),
-		'workroom'    => array(
-			'url'     => $task_id ? wpcable_workroom_url( $task_id ) : '',
-			'pattern' => 'https://app.codeable.io/tasks/{id}/workroom',
-			'label'   => __( 'Open workroom (read-only)', 'wpcable' ),
-		),
-		'complete'    => false,
-	);
+	return wpcable_task_history( $task );
 }
 
 /**

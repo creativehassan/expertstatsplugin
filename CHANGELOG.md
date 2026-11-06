@@ -1,5 +1,13 @@
 ### Changelog
 
+*0.4.3 (2026-11-06)*
+* Cohesive six-screen chrome: fluid WP-content width, readable type, Comfortable/Compact density, in-page nav. WP shell / Astra notices untouched.
+* Stats overview from local DB (profile vs imported scopes, clients, opportunity cues, valid-date activity). Missing finances stay unavailable, not $0.
+* Tasks/Clients drawers are progressive (no empty side panel). Opportunities are a ranked comparative list grouped by cue type — still unconfirmed needs.
+* Estimate and Settings restyled; PERT formulas and settings controls unchanged.
+* Disconnected browsing: token absent/expired disables Refresh but keeps and shows saved data. Logout is not Clear all data.
+* Task description and public/private comments: mapped only when already present on the existing `users/me/tasks/{filter}` list payload. Missing key ≠ empty. No new HTTP routes. UI sections render genuine stored records and an honest missing state.
+
 *0.4.2 (2026-11-06)*
 * Tasks workspace: `applyCounts` no longer throws a `$root` ReferenceError under `'use strict'` (that exception was swallowed by jQuery 3 Deferred `exceptionHook`, leaving the Loading row after a valid `wpcable_query_tasks` JSON envelope). Renderer now scopes KPI updates, unwraps the WP `{success,data}` envelope, and replaces Loading on ajax failure.
 * Legacy `wpcable.js` in-memory task list does not run on `.wpcable-workspace` pages.

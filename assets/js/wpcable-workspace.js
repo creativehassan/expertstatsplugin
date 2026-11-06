@@ -116,13 +116,42 @@
 		var comments = history.comments || {};
 		var workroom = history.workroom || {};
 		var url = workroom.url || workroomUrl || '';
-		var html = '<section class="wpcable-history-panel">';
+		var html = '<section class="wpcable-history-panel" data-present="' + (desc.present_in_payload ? '1' : '0') + '">';
 		html += '<h3>' + esc(desc.label || 'Project description') + '</h3>';
-		html += '<p>' + esc(desc.reason || cfg.i18n.historyUnavailable) + '</p>';
+		if (desc.available && desc.text) {
+			html += '<div class="wpcable-history-body">' + esc(desc.text).replace(/\n/g, '<br />') + '</div>';
+		} else if (desc.empty) {
+			html += '<p class="wpcable-history-empty">' + esc(desc.reason || 'The saved import includes an empty description field.') + '</p>';
+		} else {
+			html += '<p class="wpcable-history-missing">' + esc(desc.reason || cfg.i18n.historyUnavailable) + '</p>';
+		}
 		html += '</section>';
-		html += '<section class="wpcable-history-panel">';
+		html += '<section class="wpcable-history-panel" data-present="' + (comments.present_in_payload ? '1' : '0') + '">';
 		html += '<h3>' + esc(comments.label || 'Workroom comments') + '</h3>';
-		html += '<p>' + esc(comments.reason || cfg.i18n.commentsUnavailable) + '</p>';
+		if (comments.available && comments.items && comments.items.length) {
+			html += '<ol class="wpcable-comment-list">';
+			comments.items.forEach(function (item) {
+				var vis = (item && item.visibility) || 'unknown';
+				html += '<li class="wpcable-comment wpcable-comment--' + esc(vis) + '">';
+				html += '<span class="wpcable-comment__meta">';
+				html += esc((item && item.author) || 'Unknown author');
+				if (item && item.created_at) {
+					html += ' · ' + esc(item.created_at);
+				}
+				html += ' · ' + esc(vis);
+				html += '</span>';
+				html += '<div class="wpcable-comment__body">' + esc((item && item.body) || '') + '</div>';
+				html += '</li>';
+			});
+			html += '</ol>';
+			if (comments.reason) {
+				html += '<p class="description">' + esc(comments.reason) + '</p>';
+			}
+		} else if (comments.empty) {
+			html += '<p class="wpcable-history-empty">' + esc(comments.reason || 'The saved import includes a comments field that was empty.') + '</p>';
+		} else {
+			html += '<p class="wpcable-history-missing">' + esc(comments.reason || cfg.i18n.commentsUnavailable) + '</p>';
+		}
 		if (url) {
 			html +=
 				'<p><a class="button" href="' +
@@ -688,7 +717,7 @@
 				}
 				var client = parsed.data.client;
 				var html = '<h2>' + esc(client.full_name) + '</h2>';
-				html += '<p class="description">client_id ' + esc(client.client_id) + ' · ' + esc(client.role || '') + '</p>';
+				html += '<p class="description">' + esc('Client') + ' ' + esc(client.client_id) + ' · ' + esc(client.role || '') + '</p>';
 				html +=
 					'<p><strong>' +
 					esc('Preferred contractor') +
@@ -731,6 +760,8 @@
 				html += '<h3>' + esc('Outreach draft — review only') + '</h3>' + renderDraft(parsed.data.draft);
 				html += renderUnsupported(parsed.data.unsupported);
 				$body.html(html);
+				$root.find('.wpcable-workspace-layout').addClass('wpcable-drawer-open');
+				$root.find('#wpcable-client-drawer').prop('hidden', false);
 			});
 		}
 
@@ -754,6 +785,11 @@
 
 		$root.on('click', '.wpcable-row-link', function () {
 			openClient($(this).data('client-id'));
+		});
+
+		$root.on('click', '.wpcable-drawer__close', function () {
+			$root.find('.wpcable-workspace-layout').removeClass('wpcable-drawer-open');
+			$root.find('#wpcable-client-drawer').prop('hidden', true);
 		});
 
 		var bootId = (window.location.search.match(/client_id=(\d+)/) || [])[1];

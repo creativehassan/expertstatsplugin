@@ -4,6 +4,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,san
 .wp-sidebar h1{font-size:13px;padding:0 12px;margin:0 0 12px;color:#72aee6}
 .wp-sidebar a{display:block;padding:8px 12px;color:#c3c4c7;text-decoration:none;font-size:13px}
 .wp-sidebar a.is-current{background:#2271b1;color:#fff}
-.wp-main{flex:1;padding:20px 28px}
+.wp-main{flex:1;min-width:0;padding:20px 28px;box-sizing:border-box}
 .banner{background:#fff3cd;border:1px solid #ffc107;padding:8px 12px;margin-bottom:12px;font-size:13px;border-radius:4px}
-.wrap{max-width:1400px}
+.wrap{max-width:none;width:100%;box-sizing:border-box}
+@media (max-width: 782px) {
+  .wp-sidebar { display: none; }
+  .wp-main { padding: 12px; }
+}

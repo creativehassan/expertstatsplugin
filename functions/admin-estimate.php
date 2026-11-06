@@ -25,8 +25,15 @@ function codeable_estimate_callback() {
 	if ( isset( $_GET['rate'] ) && is_numeric( $_GET['rate'] ) ) {
 		$rate = (float) $_GET['rate'];
 	}
+	codeable_admin_notices();
+	wpcable_app_open(
+		'estimate',
+		__( 'Estimate', 'wpcable' ),
+		__( 'PERT hours and fee math. Formulas are unchanged from Settings. Nothing is sent to Codeable.', 'wpcable' )
+	);
 	$admin_estimate_template = apply_filters('wpcable_admin_estimate_template', WPCABLE_TEMPLATE_DIR.'/admin-estimate.php') ;
 	ob_start();
 	require_once $admin_estimate_template;
 	echo ob_get_clean();
+	wpcable_app_close();
 }

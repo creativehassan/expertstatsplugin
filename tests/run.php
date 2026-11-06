@@ -40,6 +40,9 @@ require __DIR__ . '/test-qa-041.php';
 echo "\n7) 0.4.2 QA: Tasks renderer scope, timezone label, estimator unchanged\n";
 require __DIR__ . '/test-qa-042.php';
 
+echo "\n7c) 0.4.3 QA: payload history, disconnected browsing, fluid chrome\n";
+require __DIR__ . '/test-qa-043.php';
+
 echo "\n8) Production JS integration (jsdom + jQuery, no Codeable network)\n";
 $js_dir    = __DIR__ . '/js';
 $js_status = 0;

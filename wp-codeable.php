@@ -5,7 +5,7 @@
  * Plugin Name:       Codeable - Expert's Stats
  * Plugin URI:        https://github.com/codeablehq/blackbook/wiki/Expert-Stats-Plugin
  * Description:       Get your Codeable data
- * Version:           0.4.2
+ * Version:           0.4.3
  * Author:            Spyros Vlachopoulos
  * Contributors:      Panagiotis Synetos, John Leskas, Justin Frydman, Jonathan Bossenger, Rob Scott, Philipp Stracker, Peter Kakoma
  * Author URI:        https://codeable.io/developers/spyros-vlachopoulos/
@@ -38,6 +38,8 @@ define( 'WPCABLE_URI', rtrim( plugin_dir_url( __FILE__ ), '/' ) );
 
 require_once WPCABLE_CLASSES_DIR . '/object_cache.php';
 require_once WPCABLE_FUNCTIONS_DIR . '/helpers.php';
+require_once WPCABLE_FUNCTIONS_DIR . '/task-payload.php';
+require_once WPCABLE_FUNCTIONS_DIR . '/admin-chrome.php';
 require_once WPCABLE_CLASSES_DIR . '/import_health.php';
 require_once WPCABLE_CLASSES_DIR . '/estimate.php';
 require_once WPCABLE_CLASSES_DIR . '/api_calls.php';
@@ -83,6 +85,13 @@ function wpcable_sync_start() {
 		wp_send_json_error( [ 'state' => 'FORBIDDEN' ], 403 );
 	}
 
+	if ( ! wpcable_sync_allowed() ) {
+		wp_send_json_error( [
+			'state'   => 'DISCONNECTED',
+			'message' => __( 'Refresh is off while disconnected. Saved data stays visible.', 'wpcable' ),
+		] );
+	}
+
 	$queue = wpcable_sync_queue();
 
 	// Resume an interrupted Refresh. Do not replace the pending queue.
@@ -111,6 +120,13 @@ add_action( 'wp_ajax_wpcable_sync_start', 'wpcable_sync_start' );
 function wpcable_sync_process() {
 	if ( ! wpcable_ajax_can_manage( 'wpcable-sync' ) ) {
 		wp_send_json_error( [ 'state' => 'FORBIDDEN' ], 403 );
+	}
+
+	if ( ! wpcable_sync_allowed() ) {
+		wp_send_json_error( [
+			'state'   => 'DISCONNECTED',
+			'message' => __( 'Refresh is off while disconnected. Saved data stays visible.', 'wpcable' ),
+		] );
 	}
 
 	$queue = wpcable_sync_queue();
@@ -157,7 +173,7 @@ add_action( 'wp_ajax_wpcable_sync_process', 'wpcable_sync_process' );
 function wpcable_install() {
 	global $wpdb;
 
-	$wpcable_db_version = '0.0.4';
+	$wpcable_db_version = '0.0.5';
 
 	if ( get_option( 'wpcable_transcactions_version' ) !== $wpcable_db_version ) {
 
@@ -248,6 +264,13 @@ function wpcable_install() {
 			`last_sync` int(11) DEFAULT 0 NOT NULL,
 			`flag` varchar(20) DEFAULT '' NOT NULL,
 			`notes` text DEFAULT '' NOT NULL,
+			`description_text` longtext DEFAULT NULL,
+			`description_present` tinyint(1) DEFAULT 0 NOT NULL,
+			`description_key` varchar(64) DEFAULT '' NOT NULL,
+			`comments_json` longtext DEFAULT NULL,
+			`comments_present` tinyint(1) DEFAULT 0 NOT NULL,
+			`comments_complete` tinyint(1) DEFAULT 0 NOT NULL,
+			`comments_source` varchar(128) DEFAULT '' NOT NULL,
 			PRIMARY KEY  (task_id),
 			KEY client_id (client_id),
 			KEY state (state),
@@ -295,7 +318,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcablecss',
 		plugins_url( 'assets/css/wpcable.css', __FILE__ ),
 		[],
-		'0.4.2'
+		'0.4.3'
 	);
 	wp_enqueue_style(
 		'ratycss',
@@ -358,7 +381,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcablejs',
 		plugins_url( 'assets/js/wpcable.js', __FILE__ ),
 		[ 'wp-util' ],
-		'0.4.2',
+		'0.4.3',
 		true
 	);
 
@@ -366,7 +389,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcable-workspace',
 		plugins_url( 'assets/css/wpcable-workspace.css', __FILE__ ),
 		[ 'wpcablecss' ],
-		'0.4.2'
+		'0.4.3'
 	);
 
 	$workspace_hooks = [
@@ -380,7 +403,7 @@ function wpcable_admin_scripts( $hook ) {
 			'wpcable-workspace',
 			plugins_url( 'assets/js/wpcable-workspace.js', __FILE__ ),
 			[ 'jquery', 'wp-util', 'simplemde', 'wpcablejs' ],
-			'0.4.2',
+			'0.4.3',
 			true
 		);
 
@@ -407,8 +430,8 @@ function wpcable_admin_scripts( $hook ) {
 					'suggested'        => __( 'Suggested from local records. Not a confirmed client need.', 'wpcable' ),
 					'profileCompleted'    => __( 'Profile completed (users/me) — different scope from imported rows', 'wpcable' ),
 					'importedRows'        => __( 'Imported project rows (local database)', 'wpcable' ),
-					'historyUnavailable'  => __( 'Unavailable in this plugin. The local table stores the title, not the full project body.', 'wpcable' ),
-					'commentsUnavailable' => __( 'Workroom comments are not imported. This is not an empty comment history.', 'wpcable' ),
+					'historyUnavailable'  => __( 'Not in the saved task-list payload. This is not an empty description, and it is not proof the API omits the field.', 'wpcable' ),
+					'commentsUnavailable' => __( 'Not in the saved task-list payload. This is not an empty thread. Pagination of public/private comments is unverified.', 'wpcable' ),
 					'notesNotComments'    => __( 'Local notes below are yours in WordPress. They are not Codeable comments.', 'wpcable' ),
 				],
 				'kpis'    => [

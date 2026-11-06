@@ -46,10 +46,16 @@ function codeable_clients_callback() {
 		! empty( $account['id'] )
 	);
 
+	wpcable_app_open(
+		'clients',
+		__( 'Clients', 'wpcable' ),
+		__( 'Every row is a real client from imported projects. Nothing here is a fabricated lead. Open a row for projects and a review-only draft. Financial charts stay hidden until money transactions import.', 'wpcable' )
+	);
 	$template = apply_filters( 'wpcable_admin_clients_template', WPCABLE_TEMPLATE_DIR . '/admin-clients.php' );
 	ob_start();
 	require $template;
 	echo ob_get_clean();
+	wpcable_app_close();
 }
 
 /**

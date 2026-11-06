@@ -19,37 +19,31 @@ $profile_completed = wpcable_account_detail( $account, 'completed_tasks_count', 
 $profile_tasks     = wpcable_account_detail( $account, 'tasks_count', null );
 $financial_ok      = $tx_count > 0;
 ?>
-<div class="wrap wpcable_wrap wpcable-workspace wpcable-workspace--tasks" data-workspace="tasks">
-	<h1><?php esc_html_e( 'Projects workspace', 'wpcable' ); ?></h1>
-	<p class="wpcable-lede">
-		<?php esc_html_e( 'Imported Codeable projects, paginated on the server. Profile totals from users/me are a different scope than these local rows. Codeable access stays read-only; only your local notes and flags are saved here.', 'wpcable' ); ?>
-	</p>
-
 	<div class="wpcable-kpi-row">
 		<div class="wpcable-kpi">
 			<span class="wpcable-kpi__label"><?php esc_html_e( 'Profile completed', 'wpcable' ); ?></span>
 			<span class="wpcable-kpi__value"><?php echo null === $profile_completed || '' === $profile_completed ? '—' : esc_html( (string) $profile_completed ); ?></span>
-			<span class="wpcable-kpi__meta"><?php esc_html_e( 'users/me completed_tasks_count — not the local table', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__meta"><?php esc_html_e( 'Expert profile completed count — not the local table', 'wpcable' ); ?></span>
 		</div>
 		<div class="wpcable-kpi">
 			<span class="wpcable-kpi__label"><?php esc_html_e( 'Imported rows', 'wpcable' ); ?></span>
 			<span class="wpcable-kpi__value" data-kpi="imported"><?php echo esc_html( number_format_i18n( (int) $counts['imported'] ) ); ?></span>
-			<span class="wpcable-kpi__meta"><?php esc_html_e( 'COUNT(*) local codeable_tasks — matches All', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__meta"><?php esc_html_e( 'Imported project rows — matches All', 'wpcable' ); ?></span>
 		</div>
 		<div class="wpcable-kpi">
 			<span class="wpcable-kpi__label"><?php esc_html_e( 'Published (filter)', 'wpcable' ); ?></span>
 			<span class="wpcable-kpi__value" data-kpi="published"><?php echo esc_html( number_format_i18n( isset( $counts['filter_published'] ) ? (int) $counts['filter_published'] : (int) $counts['published'] ) ); ?></span>
-			<span class="wpcable-kpi__meta"><?php esc_html_e( 'state = published AND flag ≠ lost — same SQL as the Published button', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__meta"><?php esc_html_e( 'Same count as the Published filter', 'wpcable' ); ?></span>
 		</div>
 		<div class="wpcable-kpi">
 			<span class="wpcable-kpi__label"><?php esc_html_e( 'Completed (filter)', 'wpcable' ); ?></span>
 			<span class="wpcable-kpi__value" data-kpi="completed"><?php echo esc_html( number_format_i18n( isset( $counts['filter_completed'] ) ? (int) $counts['filter_completed'] : (int) $counts['flag_completed'] ) ); ?></span>
-			<span class="wpcable-kpi__meta"><?php esc_html_e( 'state OR local flag = completed — same SQL as the Completed button', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__meta"><?php esc_html_e( 'Same count as the Completed filter', 'wpcable' ); ?></span>
 		</div>
 		<div class="wpcable-kpi">
 			<span class="wpcable-kpi__label"><?php esc_html_e( 'Lost (filter)', 'wpcable' ); ?></span>
 			<span class="wpcable-kpi__value" data-kpi="lost"><?php echo esc_html( number_format_i18n( isset( $counts['filter_lost'] ) ? (int) $counts['filter_lost'] : (int) $counts['flag_lost'] ) ); ?></span>
-			<span class="wpcable-kpi__meta"><?php esc_html_e( 'state OR local flag = lost. Heuristic, not hire proof. Refresh may rewrite flags; page views do not.', 'wpcable' ); ?></span>
+			<span class="wpcable-kpi__meta"><?php esc_html_e( 'Same count as the Lost filter. Local heuristic, not hire proof.', 'wpcable' ); ?></span>
 		</div>
 		<div class="wpcable-kpi <?php echo $financial_ok ? '' : 'wpcable-kpi--unavailable'; ?>">
 			<span class="wpcable-kpi__label"><?php esc_html_e( 'Transactions', 'wpcable' ); ?></span>
@@ -136,8 +130,6 @@ $financial_ok      = $tx_count > 0;
 		</div>
 	</div>
 
-	<?php codeable_last_fetch_info(); ?>
-</div>
 <style>
 <?php
 foreach ( $color_flags as $flag => $info ) {

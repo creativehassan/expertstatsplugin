@@ -129,12 +129,19 @@ function codeable_settings_callback() {
 	);
 
 	$flush_data_warning = __( 'All your data is deleted from the DB, including your private task notes or color flags. This cannot be undone.\n\nDo you want to clear your data and log out?', 'wpcable' );
+	$has_saved          = wpcable_has_saved_workspace_data();
 
 	// Hacky way to save settings without a second redirect...
 	$_SERVER['REQUEST_URI'] = remove_query_arg( [ 'action', '_wpnonce', 'success', 'error' ] );
 
+	wpcable_app_open(
+		'settings',
+		__( 'Settings', 'wpcable' ),
+		__( 'Project-list behavior, estimate defaults, and Codeable sign-in. Log out keeps saved records. Clear all data permanently removes them.', 'wpcable' )
+	);
 	$admin_settings_template = apply_filters('wpcable_admin_settings_template', WPCABLE_TEMPLATE_DIR.'/admin-settings.php') ;
 	ob_start();
 	require_once $admin_settings_template;
 	echo ob_get_clean();
+	wpcable_app_close();
 }
