@@ -84,12 +84,21 @@ function wpcable_payload_normalize_comment( $row ) {
 		}
 	}
 
-	$user = isset( $row['user'] ) && is_array( $row['user'] ) ? $row['user'] : array();
+	$user = array();
 	$name = '';
-	if ( isset( $user['full_name'] ) ) {
-		$name = (string) $user['full_name'];
-	} elseif ( isset( $user['first_name'] ) ) {
-		$name = trim( $user['first_name'] . ' ' . ( isset( $user['last_name'] ) ? $user['last_name'] : '' ) );
+	$author_source = '';
+	if ( isset( $row['user'] ) && is_array( $row['user'] ) ) {
+		$user = $row['user'];
+		if ( isset( $user['full_name'] ) && '' !== trim( (string) $user['full_name'] ) ) {
+			$name          = (string) $user['full_name'];
+			$author_source = 'user.full_name';
+		} elseif ( isset( $user['first_name'] ) || isset( $user['last_name'] ) ) {
+			$name          = trim( ( isset( $user['first_name'] ) ? $user['first_name'] : '' ) . ' ' . ( isset( $user['last_name'] ) ? $user['last_name'] : '' ) );
+			$author_source = $name ? 'user.first_name' : '';
+		}
+	} elseif ( isset( $row['user'] ) && is_string( $row['user'] ) && '' !== trim( $row['user'] ) ) {
+		$name          = (string) $row['user'];
+		$author_source = 'user';
 	}
 
 	$private = null;
@@ -129,6 +138,7 @@ function wpcable_payload_normalize_comment( $row ) {
 		'id'                 => $id,
 		'body'               => $body,
 		'author'             => $name,
+		'author_source'      => $author_source,
 		'role'               => isset( $user['role'] ) ? (string) $user['role'] : '',
 		'private'            => $private,
 		'is_contractors_only'=> $contractors_only,

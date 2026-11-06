@@ -1,5 +1,12 @@
 ### Changelog
 
+*0.4.6 (2026-11-06)*
+* Comments importer: one GET per click. A 50-item page despite `limit=20` stays **partial** (server ignored limit; do not loop offset). Duplicate-ID pages do not inflate the cache.
+* `Link rel=next` on `api.codeable.com` with documented `/tasks/{id}/comments` is **replayed on `api.codeable.io`** (path + page/limit/offset/per_page only). Token is never sent cross-domain. `/v1` and other hosts are not followed. **Load more comments (read-only)** continues from that stored Link.
+* Keys-only response-shape diagnostics (top-level keys, comment keys, nested object key names, sanitized Link). No body text or secrets. Admin drawer `<details>`.
+* Comment times use `DateTime` in the WordPress timezone (PKT when the site is `Asia/Karachi`) without `date_default_timezone_set`. Missing `user` / `private` stay empty / unknown — not invented names or public.
+* Live 1280 resize was not re-run; this patch does not claim it.
+
 *0.4.5 (2026-11-06)*
 * Opt-in **Load from Codeable (read-only)** on an imported project drawer. Local WP ajax (`wpcable_load_task_history`, `manage_options` + nonce) calls only documented `GET /tasks/{id}` then `GET /tasks/{id}/comments?limit=&offset=` on the existing authorized account (`api.codeable.io`, redirects off). Never singular `/task/`, never POST/PUT/PATCH/DELETE, never a comments composer, never bulk backfill on page views.
 * Caches successful description + comments locally (schema **0.0.6** `history_account_id` / `history_meta_json`) with source time, account stamp, and provenance. Missing `private` stays **unknown**, not public. 403 is respected and does not overwrite a good cache. Full comments page with no `Link rel=next` is **partial**, not complete. Cross-host or `/v1` Link URLs are not followed (no token leak).

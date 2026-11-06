@@ -5,7 +5,7 @@
  * Plugin Name:       Codeable - Expert's Stats
  * Plugin URI:        https://github.com/codeablehq/blackbook/wiki/Expert-Stats-Plugin
  * Description:       Get your Codeable data
- * Version:           0.4.5
+ * Version:           0.4.6
  * Author:            Spyros Vlachopoulos
  * Contributors:      Panagiotis Synetos, John Leskas, Justin Frydman, Jonathan Bossenger, Rob Scott, Philipp Stracker, Peter Kakoma
  * Author URI:        https://codeable.io/developers/spyros-vlachopoulos/
@@ -321,7 +321,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcablecss',
 		plugins_url( 'assets/css/wpcable.css', __FILE__ ),
 		[],
-		'0.4.5'
+		'0.4.6'
 	);
 	wp_enqueue_style(
 		'ratycss',
@@ -384,7 +384,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcablejs',
 		plugins_url( 'assets/js/wpcable.js', __FILE__ ),
 		[ 'wp-util' ],
-		'0.4.5',
+		'0.4.6',
 		true
 	);
 
@@ -392,7 +392,7 @@ function wpcable_admin_scripts( $hook ) {
 		'wpcable-workspace',
 		plugins_url( 'assets/css/wpcable-workspace.css', __FILE__ ),
 		[ 'wpcablecss' ],
-		'0.4.5'
+		'0.4.6'
 	);
 
 	$workspace_hooks = [
@@ -406,7 +406,7 @@ function wpcable_admin_scripts( $hook ) {
 			'wpcable-workspace',
 			plugins_url( 'assets/js/wpcable-workspace.js', __FILE__ ),
 			[ 'jquery', 'wp-util', 'simplemde', 'wpcablejs' ],
-			'0.4.5',
+			'0.4.6',
 			true
 		);
 
@@ -438,6 +438,9 @@ function wpcable_admin_scripts( $hook ) {
 					'notesNotComments'    => __( 'Local notes below are yours in WordPress. They are not Codeable comments.', 'wpcable' ),
 					'loadHistory'         => __( 'Load from Codeable (read-only)', 'wpcable' ),
 					'loadHistoryDisconnected' => __( 'Load from Codeable is off while disconnected. Saved data stays visible.', 'wpcable' ),
+					'loadMoreComments'    => __( 'Load more comments (read-only)', 'wpcable' ),
+					'authorMissing'       => __( 'Author not in payload', 'wpcable' ),
+					'shapeDebug'          => __( 'Response shape (keys only)', 'wpcable' ),
 				],
 				'kpis'    => [
 					'profileCompleted' => wpcable_account_detail( $account, 'completed_tasks_count', null ),

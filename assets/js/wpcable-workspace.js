@@ -134,7 +134,7 @@
 				var vis = (item && item.visibility) || 'unknown';
 				html += '<li class="wpcable-comment wpcable-comment--' + esc(vis) + '">';
 				html += '<span class="wpcable-comment__meta">';
-				html += esc((item && item.author) || 'Unknown author');
+				html += esc((item && item.author) ? item.author : (cfg.i18n.authorMissing || 'Author not in payload'));
 				if (item && item.created_at) {
 					html += ' · ' + esc(item.created_at);
 				}
@@ -165,12 +165,40 @@
 			html +=
 				'<p><button type="button" class="button button-secondary wpcable-load-history">' +
 				esc(history.load_label || cfg.i18n.loadHistory || 'Load from Codeable (read-only)') +
-				'</button></p>';
+				'</button>';
+			if (history.can_load_more) {
+				html +=
+					' <button type="button" class="button button-secondary wpcable-load-more-comments">' +
+					esc(history.load_more_label || cfg.i18n.loadMoreComments || 'Load more comments (read-only)') +
+					'</button>';
+			}
+			html += '</p>';
 			if (history.load_help) {
 				html += '<p class="description">' + esc(history.load_help) + '</p>';
 			}
 		} else {
 			html += '<p class="description">' + esc(cfg.i18n.loadHistoryDisconnected || 'Load from Codeable is off while disconnected. Saved data stays visible.') + '</p>';
+		}
+		if (history.shape && (history.shape.comment_keys || history.shape.envelope || history.shape.link)) {
+			html += '<details class="wpcable-shape-debug"><summary>' + esc(cfg.i18n.shapeDebug || 'Response shape (keys only)') + '</summary>';
+			html += '<p class="description">' + esc('Envelope: ' + (history.shape.envelope || '—') + '. Item count: ' + (history.shape.item_count || 0) + '.') + '</p>';
+			if (history.shape.top_keys && history.shape.top_keys.length) {
+				html += '<p class="description">' + esc('Top-level keys: ' + history.shape.top_keys.join(', ')) + '</p>';
+			}
+			if (history.shape.comment_keys && history.shape.comment_keys.length) {
+				html += '<p class="description">' + esc('Comment keys: ' + history.shape.comment_keys.join(', ')) + '</p>';
+			}
+			if (history.shape.nested) {
+				Object.keys(history.shape.nested).forEach(function (k) {
+					var n = history.shape.nested[k] || {};
+					var extra = n.keys && n.keys.length ? ' keys ' + n.keys.join(',') : '';
+					html += '<p class="description">' + esc(k + ': ' + (n.kind || '') + extra) + '</p>';
+				});
+			}
+			if (history.shape.link) {
+				html += '<p class="description">' + esc('Sanitized Link: ' + history.shape.link) + '</p>';
+			}
+			html += '</details>';
 		}
 		html += '</section>';
 		return html;
@@ -570,6 +598,22 @@
 			var $btn = $(this);
 			$btn.prop('disabled', true);
 			ajax('wpcable_load_task_history', { task_id: currentTask.task_id }).done(function (res) {
+				var parsed = unwrapWpAjax(res);
+				var payload = parsed.data || {};
+				var notice = payload.message || parsed.message || '';
+				openDrawer(currentTask.task_id, notice);
+			}).fail(function () {
+				$btn.prop('disabled', false);
+			});
+		});
+
+		$root.on('click', '.wpcable-load-more-comments', function () {
+			if (!currentTask || !currentTask.task_id) {
+				return;
+			}
+			var $btn = $(this);
+			$btn.prop('disabled', true);
+			ajax('wpcable_load_task_history', { task_id: currentTask.task_id, more: 1 }).done(function (res) {
 				var parsed = unwrapWpAjax(res);
 				var payload = parsed.data || {};
 				var notice = payload.message || parsed.message || '';

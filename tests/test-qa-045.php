@@ -16,7 +16,7 @@ $loader = file_get_contents( WPCABLE_TEST_ROOT . '/functions/task-detail.php' );
 wpcable_assert( false !== strpos( $loader, "tasks/' . \$task_id" ) || false !== strpos( $loader, 'tasks/\' . $task_id' ) || false !== strpos( $loader, "tasks/' . (int) \$task_id" ), 'loader uses plural tasks path' );
 wpcable_assert( false !== strpos( $loader, "'limit'" ), 'comments use documented limit param' );
 wpcable_assert( false !== strpos( $loader, "'offset'" ), 'comments use documented offset param' );
-wpcable_assert( false === strpos( $loader, "'page'" ), 'loader does not probe page= as an alternate comments param' );
+wpcable_assert( false === strpos( $loader, "'page' =>" ), 'first comments request does not hardcode a page= probe' );
 wpcable_assert( false === strpos( $loader, 'attachments' ), 'attachments endpoint not in this phase' );
 wpcable_assert( false === strpos( $loader, '/reviews' ), 'reviews endpoint not in this phase' );
 
@@ -29,7 +29,7 @@ wpcable_assert( false !== strpos( $js, 'wpcable-load-history' ), 'drawer has Loa
 wpcable_assert( false !== strpos( $js, 'wpcable_load_task_history' ), 'drawer posts the local WP ajax action' );
 
 $php = file_get_contents( WPCABLE_TEST_ROOT . '/wp-codeable.php' );
-wpcable_assert( false !== strpos( $php, 'Version:           0.4.5' ), 'plugin header is 0.4.5' );
+wpcable_assert( false !== strpos( $php, 'Version:           0.4.6' ), 'plugin header is 0.4.6' );
 wpcable_assert( false !== strpos( $php, '0.0.6' ), 'schema 0.0.6 additive' );
 wpcable_assert( false !== strpos( $php, 'history_meta_json' ), 'history_meta_json column additive' );
 
@@ -339,7 +339,14 @@ $wpcable_http_queue = array(
 $cross = wpcable_load_task_history_run( 3 );
 wpcable_assert( $cross['ok'], 'saves first page when next Link is other-host' );
 wpcable_assert( empty( $cross['comments']['complete'] ), 'other-host Link is not treated as complete' );
-wpcable_assert( false !== strpos( $cross['comments']['reason'], 'cross-domain' ) || false !== strpos( $cross['comments']['reason'], 'not followed' ), 'other-host Link explained as not followed' );
+wpcable_assert( false !== strpos( $cross['comments']['reason'], 'replayed' ) || false !== strpos( $cross['comments']['reason'], 'api.codeable.io' ), 'other-host documented path is replayed onto api.codeable.io, not fetched cross-domain' );
+$cross_hist = wpcable_task_history_for_display( $repo->get_task( 3 ) );
+wpcable_assert( ! empty( $cross_hist['can_load_more'] ), 'verified .com Link enables Load more on .io' );
+$cross_hosts = array();
+foreach ( $cross['calls'] as $c ) {
+	$cross_hosts[] = isset( $c['path'] ) ? $c['path'] : '';
+}
+wpcable_assert( 2 === count( $cross['calls'] ), 'first click is one task GET plus one comments GET (no auto-follow)' );
 
 $other = $repo->get_task( 1 );
 update_option(

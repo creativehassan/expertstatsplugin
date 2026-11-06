@@ -46,6 +46,9 @@
 			unavailableHistory: 'Unavailable',
 			loadHistory: 'Load from Codeable (read-only)',
 			loadHistoryDisconnected: 'Load from Codeable is off while disconnected. Saved data stays visible.',
+			loadMoreComments: 'Load more comments (read-only)',
+			authorMissing: 'Author not in payload',
+			shapeDebug: 'Response shape (keys only)',
 			historyUnavailable: 'Not in the saved task-list payload.',
 			commentsUnavailable: 'Not in the saved task-list payload.',
 			notesNotComments: 'Local notes below are yours in WordPress.'

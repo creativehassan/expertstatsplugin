@@ -571,8 +571,15 @@
 	padding-left: 10px;
 }
 
-.wpcable-load-history {
+.wpcable-load-history,
+.wpcable-load-more-comments {
 	margin-top: 8px;
+}
+
+.wpcable-shape-debug {
+	margin-top: 12px;
+	font-size: 12px;
+	color: var(--wpcable-muted);
 }
 
 .wpcable-filter-count {

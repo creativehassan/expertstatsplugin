@@ -133,7 +133,8 @@ function wpcable_ajax_load_task_history() {
 	}
 
 	$task_id = isset( $_REQUEST['task_id'] ) ? (int) $_REQUEST['task_id'] : 0;
-	$out     = wpcable_load_task_history_run( $task_id );
+	$more    = ! empty( $_REQUEST['more'] );
+	$out     = wpcable_load_task_history_run( $task_id, array( 'more' => $more ) );
 
 	if ( 'not_found' === $out['state'] ) {
 		wp_send_json_error( $out, 404 );

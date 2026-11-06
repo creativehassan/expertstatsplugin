@@ -36,7 +36,7 @@ Blueprint section: `### Comments [/tasks/{id}/comments]` → `#### List comments
 - 200 list example items: `id`, `text`, `user{id,full_name,avatar}`, `edited`, `published_at`. The list example does **not** include `private`.
 - 204 / 401 / 403 / 404.
 
-**How 0.4.5 handles the limit/offset vs Link `page` contradiction:** send only documented `limit` + `offset`. Inspect returned `Link` as metadata. Do not probe `?page=` as an alternate route. Treat `rel=next` as “another page exists” and continue with `offset += limit` **only** when the Link host is `api.codeable.io` and the path is exactly `/tasks/{id}/comments`. Other hosts and `/v1` prefixes are not followed. A full page with no next Link is **partial**, not complete.
+**How 0.4.6 handles the limit/offset vs Link `page` contradiction:** the first click still sends documented `limit` + `offset` only (no `page=` probe). Returned `Link rel=next` is inspected. If the path is exactly `/tasks/{id}/comments` on `api.codeable.io` or documented HOST `api.codeable.com`, the path and integer `page`/`limit`/`offset`/`per_page` query are **replayed on `api.codeable.io` only** (token never sent to `.com`). `/v1` is not a verified path and is not followed. One comments GET per click; **Load more** uses the stored Link. If the server returns 50 rows for `limit=20`, do not guess the next offset from the requested limit. Keep **partial** until X-Total-Count, 204, a short last page, or X-Page-Count says terminal.
 
 **Visibility:** missing `private` → `unknown`, not public. `private: true` → private. `private: false` → public. Never claim all private comments are available after a 403.
 
@@ -69,7 +69,7 @@ Do not call these from Expert Stats. No comments composer.
 - Switching host to `api.codeable.com`
 - Undocumented singular `/task/{id}` (third-party Chrome extension)
 
-## What 0.4.5 does with this
+## What 0.4.6 does with this
 
 - Adds opt-in **Load from Codeable (read-only)** for one imported `task_id` at a time.
 - Uses existing authorized account abstraction. Does not mint or extract credentials.
